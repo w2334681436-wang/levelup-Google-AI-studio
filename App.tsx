@@ -880,7 +880,9 @@ export default function LevelUpApp() {
   };
 
   const updateGameStats = (seconds) => {
-    const m = Math.floor(seconds / 60);import React, { useState, useEffect, useRef } from 'react';
+    const m = Math.floor(seconds / 60);
+    saveData({ ...todayStats, gameUsed: todayStats.gameUsed + m, gameBank: Math.max(0, todayStats.gameBank - m) });
+  };
 
   useEffect(() => {
     const checkDailyReview = () => {
