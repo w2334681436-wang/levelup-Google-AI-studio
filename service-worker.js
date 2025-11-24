@@ -1,33 +1,34 @@
 // Service Worker: 实施 PWA 基础缓存策略
 
-const CACHE_NAME = 'levelup-cache-v2';
-const urlsToCache = [
-  '/',
+const CACHE_NAME = 'levelup-cache-v3'; // 缓存版本升级
+// 应用外壳的核心文件：/index.html 是应用启动所需的唯一 HTML 文件。
+const APP_SHELL_FILES = [
+  '/', 
   '/index.html',
   '/manifest.json',
   '/icon.png',
-  // 注意：在实际 Vite 部署环境中，这里还应包含所有打包后的 JS/CSS 文件。
-  // 由于我们不知道打包后的文件名，这里只缓存核心静态文件。
 ];
 
-// 监听安装事件
+// 监听安装事件：缓存所有应用外壳所需文件
 self.addEventListener('install', (event) => {
-  console.log('Service Worker: Installing and caching assets...');
+  console.log('Service Worker: Installing and caching essential App Shell...');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
-        console.log('Opened cache');
-        // 缓存应用外壳所需的所有资源
-        return cache.addAll(urlsToCache);
+        // 确保 /index.html 被缓存。由于 Service Worker 的作用域是根目录，
+        // 即使 Vite 打包的 JS/CSS 路径变动，只要 index.html 在，应用就能启动。
+        return cache.addAll(APP_SHELL_FILES);
+      })
+      .catch(error => {
+        console.error('Failed to cache App Shell assets:', error);
       })
   );
   self.skipWaiting();
 });
 
-// 监听激活事件
+// 监听激活事件：清理旧版本缓存
 self.addEventListener('activate', (event) => {
-  console.log('Service Worker: Activating...');
-  // 清理旧的缓存版本
+  console.log('Service Worker: Activating and cleaning old caches...');
   const cacheWhitelist = [CACHE_NAME];
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -40,33 +41,32 @@ self.addEventListener('activate', (event) => {
         })
       );
     }).then(() => {
-      // 确保 Service Worker 立即接管控制权
       return clients.claim();
     })
   );
 });
 
-// 监听获取（Fetch）事件 - 缓存优先策略
+// 监听获取（Fetch）事件：缓存优先，导航回退到 index.html
 self.addEventListener('fetch', (event) => {
+  // 1. 尝试从缓存中匹配资源
   event.respondWith(
     caches.match(event.request)
       .then((response) => {
-        // 如果缓存中有匹配的资源，则直接返回
         if (response) {
           return response;
         }
-        // 否则，从网络获取
-        return fetch(event.request);
-      })
-      .catch((error) => {
-        // 离线且缓存中没有资源时的最后捕获
-        console.error('Fetch failed for:', event.request.url, error);
-        // 如果是主页请求失败，可以返回一个离线页面
-        if (event.request.mode === 'navigate') {
-           return new Response("App is offline. Please check your network.", { status: 503, statusText: "Offline" });
-        }
-        // 对于其他资源，返回一个空的或错误响应
-        return new Response('Network error or resource not cached.', { status: 500 });
+        
+        // 2. 如果缓存中没有，从网络获取
+        return fetch(event.request).catch(() => {
+          // 3. 网络请求失败时，检查是否是导航请求
+          if (event.request.mode === 'navigate') {
+            // 如果是导航请求（例如应用启动），返回缓存中的 /index.html 作为应用外壳
+            return caches.match('/index.html');
+          }
+          
+          // 对于其他非导航请求（如图片、字体等），返回离线提示
+          return new Response("Offline or resource not cached.", { status: 503, statusText: "Offline" });
+        });
       })
   );
 });
