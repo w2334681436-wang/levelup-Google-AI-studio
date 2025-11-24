@@ -10,8 +10,12 @@
     <meta name="theme-color" content="#0a0a0a" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    
+    <!-- 桌面图标：继续使用带黑底的版本 (icon.svg) -->
     <link rel="apple-touch-icon" href="/icon.svg" />
-    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    
+    <!-- 浏览器标签图标：使用透明版本 (logo_transparent.svg)，更美观 -->
+    <link rel="icon" type="image/svg+xml" href="/logo_transparent.svg" />
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -51,7 +55,6 @@
         transition: opacity 0.6s ease-out;
       }
       
-      /* 这里的动画是为了衔接系统启动屏 */
       .splash-icon {
         width: 120px;
         height: 120px;
@@ -86,9 +89,9 @@
     </style>
   </head>
   <body>
-    <!-- 开屏内容：现在使用新的图标，保持视觉一致 -->
+    <!-- 开屏内容：关键修改！这里改用透明图标 -->
     <div id="splash-screen">
-       <img src="/icon.svg" class="splash-icon" alt="Level Up" />
+       <img src="/logo_transparent.svg" class="splash-icon" alt="Level Up" />
        <div class="loader-bar"></div>
     </div>
 
@@ -97,10 +100,7 @@
     <script type="module" src="/index.tsx"></script>
 
     <script>
-      // 1. PWA Service Worker 注册
       if ('serviceWorker' in navigator) {
-          // 修复：添加协议检查。只有在 http: 或 https: 协议下才注册 Service Worker。
-          // 这样可以避免在本地预览环境（如 blob:）中报错，同时不影响 Vercel 部署后的功能。
           if (window.location.protocol === 'http:' || window.location.protocol === 'https:') {
               navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
                 .catch(error => console.error('SW Error:', error));
@@ -109,7 +109,6 @@
           }
       }
 
-      // 2. 优雅移除开屏动画
       window.onload = () => {
         setTimeout(() => {
           const splash = document.getElementById('splash-screen');
@@ -117,7 +116,7 @@
             splash.style.opacity = '0';
             setTimeout(() => splash.remove(), 600);
           }
-        }, 500); // 稍微多展示一下帅气的图标
+        }, 500);
       };
     </script>
   </body>
