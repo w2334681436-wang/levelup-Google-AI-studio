@@ -12,10 +12,17 @@
       </feMerge>
     </filter>
   </defs>
+  
+  <!-- 1. 黑色背景防止白边 -->
   <rect width="512" height="512" fill="#0a0a0a" />
+  
+  <!-- 2. 外发光圆环 -->
   <circle cx="256" cy="256" r="200" fill="none" stroke="url(#ringGrad)" stroke-width="15" filter="url(#glow)" />
-  <text x="50%" y="45%" dominant-baseline="middle" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-style="italic" font-size="72" fill="white" letter-spacing="-2">LEVEL</text>
-  <text x="50%" y="62%" dominant-baseline="middle" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-style="italic" font-size="72" fill="white" letter-spacing="-2">UP!</text>
-  <!-- 更换了一个更现代、更有动感的闪电路径 -->
-  <path d="M280,320 L240,320 L260,260 L200,260 L220,200 L300,200 L280,260 L340,260 Z" fill="#fbbf24" stroke="#fbbf24" stroke-width="4" stroke-linejoin="round" transform="translate(-15, 40)"/>
+  
+  <!-- 3. 文字上移，避开闪电 (y值从 45%/62% 调整为 38%/53%) -->
+  <text x="50%" y="38%" dominant-baseline="middle" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-style="italic" font-size="72" fill="white" letter-spacing="-2">LEVEL</text>
+  <text x="50%" y="53%" dominant-baseline="middle" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-style="italic" font-size="72" fill="white" letter-spacing="-2">UP!</text>
+  
+  <!-- 4. 重新设计的经典闪电 (放在底部，不挡字) -->
+  <path d="M290 310 L230 370 L270 370 L250 450 L310 360 L280 360 Z" fill="#fbbf24" stroke="#fbbf24" stroke-width="4" stroke-linejoin="round" />
 </svg>
