@@ -89,7 +89,6 @@ const cleanAIResponse = (text) => {
 };
 
 const getContrastColor = (hexColor) => {
-  // Simple brightness check to return black or white text
   if (!hexColor) return '#ffffff';
   const r = parseInt(hexColor.substr(1, 2), 16);
   const g = parseInt(hexColor.substr(3, 2), 16);
@@ -104,7 +103,6 @@ const MarkdownMessage = ({ content }) => {
   
   const parseMarkdown = (text) => {
     let parsed = text;
-    // Basic Markdown Parsing
     parsed = parsed.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
     parsed = parsed.replace(/### (.*?)(?=\n|$)/g, '<h3 class="text-lg font-bold mt-4 mb-2">$1</h3>');
     parsed = parsed.replace(/## (.*?)(?=\n|$)/g, '<h2 class="text-xl font-bold mt-4 mb-2">$1</h2>');
@@ -112,7 +110,6 @@ const MarkdownMessage = ({ content }) => {
     parsed = parsed.replace(/(<li class="ml-4">.*?<\/li>)+/g, '<ul class="list-disc ml-4 my-2">$&</ul>');
     parsed = parsed.replace(/\n/g, '<br />');
     
-    // Style <think> blocks
     parsed = parsed.replace(/<think>([\s\S]*?)<\/think>/gi, (match, p1) => {
         return `<div class="bg-black/20 text-opacity-80 text-xs p-3 rounded-lg mb-2 italic border-l-2 border-purple-400/50"><span class="font-bold not-italic opacity-100">Thinking:</span><br/>${p1}</div>`;
     });
@@ -162,7 +159,6 @@ const API_PROVIDERS = [
 
 const COMMON_EMOJIS = ['👍', '🔥', '💪', '😭', '🙏', '🎉', '🤔', '💤', '📚', '☕️', '🤖', '👻'];
 
-// 默认人设
 const DEFAULT_PERSONA = "你是一位专业、耐心的考研导师。请根据学生的学习数据和进度提供有针对性的建议和指导。请使用markdown格式回复，用**粗体**强调重点，用###表示小标题，用-表示列表项。";
 
 const SUBJECT_CONFIG = {
@@ -172,7 +168,6 @@ const SUBJECT_CONFIG = {
   cs: { name: "专业课二（408）", color: "text-purple-400", keyword: ['408', '计组', '数据结构', '操作系统', '计算机网络'] },
 };
 
-// 学习进度现在使用 content 字段来存储详细的学习内容
 const initialProgress = {
   english: { content: "目前已学习完单词书第一册，开始做长难句分析。", lastUpdate: getTodayDateString() },
   politics: { content: "未开始政治基础学习。", lastUpdate: getTodayDateString() },
@@ -881,85 +876,6 @@ export default function LevelUpApp() {
 
   const updateGameStats = (seconds) => {
     const m = Math.floor(seconds / 60);
-    saveData({ ...todayStats, gameUsed: todayStats.gameUsed + m, gameBank: Math.max(0, todayStats.gameBank - m) });
-  };
-
-  useEffect(() => {
-    const checkDailyReview = () => {
-      const lastReviewDate = localStorage.getItem('last_ai_review_date');
-      const today = getTodayDateString();
-      
-      if (lastReviewDate !== today) {
-        const yesterday = getYesterdayDateString();
-        const yesterdayData = history.find(d => d.date === yesterday);
-        
-        if (yesterdayData && yesterdayData.studyMinutes > 0) {
-          const reviewMessage = {
-            role: 'assistant',
-            content: `📊 昨日学习复盘提醒\n\n昨天（${yesterday}）你学习了 ${(yesterdayData.studyMinutes/60).toFixed(1)} 小时，完成了 ${yesterdayData.logs.length} 个学习任务。需要我帮你分析一下学习效果和制定今日计划吗？`
-          };
-          
-          setChatMessages(prev => [...prev, reviewMessage]);
-          saveUnreadMessages(unreadAIMessages + 1);
-          localStorage.setItem('last_ai_review_date', today);
-        }
-      }
-    };
-
-    const now = new Date();
-    const timeUntilNextCheck = (24 * 60 * 60 * 1000) - (now.getHours() * 60 * 60 * 1000 + now.getMinutes() * 60 * 1000 + now.getSeconds() * 1000);
-    
-    const timer = setTimeout(() => {
-      checkDailyReview();
-      setInterval(checkDailyReview, 24 * 60 * 60 * 1000);
-    }, timeUntilNextCheck);
-
-    return () => clearTimeout(timer);
-  }, [history, unreadAIMessages]);
-
-  useEffect(() => { 
-    if (showChatModal) {
-      chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [chatMessages, showChatModal, aiThinking]);
-
-  useEffect(() => {
-    const handleFsChange = () => { setIsFullscreen(!!document.fullscreenElement); };
-    document.addEventListener("fullscreenchange", handleFsChange);
-    return () => document.removeEventListener("fullscreenchange", handleFsChange);
-  }, []);
-
-  const updateStudyStats = (seconds, log) => {
-    const m = Math.floor(seconds / 60);
-    const g = Math.floor(m / 4.5); 
-    const newStats = { 
-      ...todayStats, 
-      studyMinutes: todayStats.studyMinutes + m, 
-      gameBank: todayStats.gameBank + g, 
-      logs: [...todayStats.logs, { time: new Date().toLocaleTimeString('zh-CN', {hour:'2-digit',minute:'2-digit'}), content: log, duration: m }] 
-    };
-    saveData(newStats);
-    autoUpdateProgress(log, learningProgress); 
-  };
-
-  const updateGameStats = (seconds) => {
-    const m = Math.floor(seconds / 60);
-    saveData({ ...todayStats, gameUsed: todayStats.gameUsed + m, gameBank: Math.max(0, todayStats.gameBank - m) });
-  };
-
-  const switchMode = (newMode) => {
-    setIsActive(false);
-    setIsZen(false);
-    
-    if (newMode === 'gaming') {
-      if (todayStats.gameBank <= 0) {
-        addNotification("⛔ 你的游戏券余额为0！请先去专注学习！", "error");
-        setMode('focus');
-        setInitialTime(45 * 60);
-        setTimeLeft(45 * 60);
-        return;
-      }
-}
     saveData({ ...todayStats, gameUsed: todayStats.gameUsed + m, gameBank: Math.max(0, todayStats.gameBank - m) });
   };
 
