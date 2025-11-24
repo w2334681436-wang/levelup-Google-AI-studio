@@ -9,21 +9,21 @@
   "theme_color": "#0a0a0a",
   "icons": [
     {
-      "src": "/icon.jpg",
+      "src": "/icon.png",
       "sizes": "192x192",
-      "type": "image/jpeg",
+      "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icon.jpg",
+      "src": "/icon.png",
       "sizes": "512x512",
-      "type": "image/jpeg",
+      "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icon.jpg",
+      "src": "/icon.png",
       "sizes": "180x180",
-      "type": "image/jpeg",
+      "type": "image/png",
       "purpose": "apple-touch-icon"
     }
   ]
