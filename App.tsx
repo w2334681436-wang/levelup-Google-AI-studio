@@ -1623,7 +1623,7 @@ export default function LevelUpApp() {
               ))}
             </div>
         </div>
-      </div>>
+      </div>
 
       <MobileNav 
         mode={mode}
