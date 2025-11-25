@@ -650,9 +650,8 @@ export default function LevelUpApp() {
       if (todayData) {
         setTodayStats(todayData);
       } else {
-        let lastBank = 0;
-        if (storedHistory.length > 0) lastBank = storedHistory[0].gameBank || 0;
-        setTodayStats({ date: todayStr, studyMinutes: 0, gameBank: lastBank > 0 ? lastBank : 0, gameUsed: 0, logs: [] });
+        // 新的一天：游戏时间重置为 0，不再继承上一天的余额
+        setTodayStats({ date: todayStr, studyMinutes: 0, gameBank: 0, gameUsed: 0, logs: [] });
       }
 
       const storedTimerStateText = localStorage.getItem('levelup_timer_state');
@@ -1005,13 +1004,22 @@ export default function LevelUpApp() {
     setIsActive(false); 
     setIsZen(false); 
     
-    const newTimeLeft = initialTime;
-    setTimeLeft(newTimeLeft); 
-    saveTimerState(false, newTimeLeft, initialTime, mode);
-
     if(document.fullscreenElement) document.exitFullscreen().catch(()=>{}); 
-    if(mode==='gaming') updateGameStats(initialTime-timeLeft); 
-    addNotification("计时已取消", "info");
+
+    if (mode === 'gaming') {
+      // 游戏模式：扣除已用时间，保留剩余时间
+      updateGameStats(initialTime - timeLeft);
+      setInitialTime(timeLeft); // 将当前剩余时间设为新的起点
+      // timeLeft 保持不变
+      saveTimerState(false, timeLeft, timeLeft, mode);
+      addNotification("游戏暂停，剩余时间已保存", "info");
+    } else {
+      // 学习模式：重置回初始设定时间
+      const newTimeLeft = initialTime;
+      setTimeLeft(newTimeLeft); 
+      saveTimerState(false, newTimeLeft, initialTime, mode);
+      addNotification("计时已取消", "info");
+    }
   };
   
   const cancelStopTimer = () => setShowStopModal(false);
@@ -1465,7 +1473,7 @@ export default function LevelUpApp() {
       <div className="absolute inset-0 opacity-5 pointer-events-none mix-blend-overlay" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")` }}></div>
 
       {/* --- 左侧边栏 (已增强：修复收起时可能残留内容的问题) --- */}
-      <div className={`hidden md:flex flex-col bg-[#111116] gap-4 z-20 h-full relative group scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent transition-all duration-700 ease-in-out ${isZen ? 'w-0 p-0 opacity-0 border-none pointer-events-none overflow-hidden' : 'w-96 p-6 border-r border-gray-800 opacity-100 overflow-y-auto'}`}>
+      <div className={`hidden md:flex flex-col bg-[#111116] gap-4 z-20 h-full relative group scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent transition-all duration-700 ease-in-out ${isZen ? 'w-0 min-w-0 p-0 opacity-0 border-none pointer-events-none overflow-hidden' : 'w-96 p-6 border-r border-gray-800 opacity-100 overflow-y-auto'}`}>
         <div className="absolute inset-0 bg-gradient-to-br from-blue-900/10 via-purple-900/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
         
         {/* 内容容器：min-w 保持内容宽度，防止挤压 */}
