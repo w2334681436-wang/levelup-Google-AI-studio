@@ -503,6 +503,7 @@ export default function LevelUpApp() {
   const [selectedProvider, setSelectedProvider] = useState('siliconflow');
   const [customPersona, setCustomPersona] = useState(''); 
   const [customUserBackground, setCustomUserBackground] = useState(''); // 新增：个人背景状态
+  const [zenQuote, setZenQuote] = useState(''); // 新增：存储禅模式金句
   const [deepThinkingMode, setDeepThinkingMode] = useState(false); 
   
   const [availableModels, setAvailableModels] = useState([]);
@@ -1042,7 +1043,34 @@ export default function LevelUpApp() {
       } catch (err) { console.log("Exit Fullscr err", err); }
     }
   };
-
+// --- 新增：生成禅模式激励语录 ---
+  const fetchZenQuote = async () => {
+    if (!apiKey) return; // 如果没有 API Key 就不生成
+    
+    // 如果有个人背景，也发给 AI，让它生成的句子更贴切
+    const backgroundPrompt = customUserBackground ? `用户背景：${customUserBackground}。` : "";
+    
+    try {
+      const cleanBaseUrl = apiBaseUrl.replace(/\/$/, '');
+      const response = await fetch(`${cleanBaseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model: apiModel,
+          messages: [{ 
+            role: "user", 
+            content: `${backgroundPrompt}请生成一句非常简短、震撼人心、能激励考研学生坚持下去的励志语录（名人名言或高级心灵鸡汤）。要求：中文，30字以内，不要带引号，不要解释，直接给句子。` 
+          }],
+          stream: false // 这里不需要流式传输，直接要结果
+        })
+      });
+      const data = await response.json();
+      const quote = data.choices?.[0]?.message?.content?.trim();
+      if (quote) setZenQuote(quote);
+    } catch (e) {
+      console.error("Quote fetch failed", e);
+    }
+  };
   const toggleTimer = () => {
     if (mode === 'gaming' && todayStats.gameBank <= 0 && !isActive) {
       addNotification("余额不足，无法开始游戏！", "error");
@@ -1054,6 +1082,7 @@ export default function LevelUpApp() {
       saveTimerState(true, timeLeft, initialTime, mode);
       setIsActive(true);
       if (mode === 'focus') {
+        fetchZenQuote(); // <--- 新增：每次开始专注，就去求一条签！
         setIsZen(true);
         if (appContainerRef.current && document.fullscreenEnabled) {
              appContainerRef.current.requestFullscreen().catch(() => {});
@@ -1796,7 +1825,14 @@ export default function LevelUpApp() {
                </div>
             </div>
           </div>
-
+{/* --- 新增：禅模式激励金句 --- */}
+          {isZen && zenQuote && (
+            <div className="my-8 max-w-2xl px-6 text-center z-20 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+              <p className="text-xl md:text-3xl font-serif italic text-transparent bg-clip-text bg-gradient-to-r from-emerald-200 via-white to-cyan-200 drop-shadow-lg opacity-90 leading-relaxed">
+                “{zenQuote}”
+              </p>
+            </div>
+          )}
           <div className={`flex gap-4 md:gap-6 z-10 transition-all duration-300 ${isZen && isActive ? 'opacity-30 hover:opacity-100' : 'opacity-100'} landscape:mb-8`}>
             {!isActive ? (
               <button 
