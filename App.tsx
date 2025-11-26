@@ -803,7 +803,7 @@ export default function LevelUpApp() {
     localStorage.setItem('ai_unread_messages', count.toString());
   };
 
-  // --- 2. 新增：绘制悬浮窗内容 ---
+// --- 2. 增强版：绘制悬浮窗内容 (防黑屏 + 美化 + 亮框提醒) ---
   const updatePiP = (seconds, currentMode) => {
     const canvas = canvasRef.current;
     const video = videoRef.current;
@@ -813,25 +813,53 @@ export default function LevelUpApp() {
     const width = canvas.width;
     const height = canvas.height;
 
-    // 1. 绘制背景 (专注是绿色，休息是蓝色)
-    ctx.fillStyle = currentMode === 'focus' ? '#064e3b' : '#1e3a8a'; 
+    // 1. 智能背景色：普通状态深色护眼，时间到(<=0)变成鲜艳的亮红色/绿色
+    if (seconds <= 0) {
+        // 时间到！红绿闪烁背景 (模拟亮框效果)
+        const isEvenSecond = Math.floor(Date.now() / 500) % 2 === 0;
+        ctx.fillStyle = isEvenSecond ? '#ef4444' : '#22c55e'; // 红绿交替
+    } else {
+        // 正常倒计时背景 (根据模式：专注深绿 / 休息深蓝)
+        ctx.fillStyle = currentMode === 'focus' ? '#022c22' : '#172554'; 
+    }
+    
+    // 绘制圆角矩形背景
     ctx.fillRect(0, 0, width, height);
 
-    // 2. 绘制时间文字
+    // 2. 绘制时间文字 (超大字体填满画面)
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 50px "Courier New", monospace'; // 使用等宽字体
+    // 根据时间长度动态调整字号，保证不溢出
+    const fontSize = seconds > 3600 ? 40 : 48; 
+    ctx.font = `bold ${fontSize}px "Segoe UI", Roboto, sans-serif`; 
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     
-    // 如果时间到了，显示“完成”
-    const text = seconds <= 0 ? "完成!" : formatTime(seconds);
-    ctx.fillText(text, width / 2, height / 2);
+    // 如果时间到了，显示 "TIME UP"
+    const text = seconds <= 0 ? "DONE!" : formatTime(seconds);
     
-    // 3. 关键：确保视频源实时更新
-    if (video.srcObject === null) {
-       // 捕捉画布流 (30fps足够了)
-       video.srcObject = canvas.captureStream(30);
-       video.play().catch(()=>{}); // 必须播放才能进入PiP
+    // 添加文字阴影，增加立体感
+    ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
+    ctx.shadowBlur = 4;
+    ctx.shadowOffsetX = 2;
+    ctx.shadowOffsetY = 2;
+    
+    ctx.fillText(text, width / 2, height / 2 + 2); // 微调垂直居中
+    
+    // 重置阴影
+    ctx.shadowColor = "transparent";
+
+    // 3. 关键修复黑屏：强制刷新视频流
+    if (video.srcObject) {
+        // 如果流已经存在，不需要重新 capture，但为了防黑屏，画一点微小的噪点或动态条
+        // (这里用一个极小的透明矩形刷新画布状态)
+        ctx.fillStyle = 'rgba(255,255,255,0.01)';
+        ctx.fillRect(0, 0, 1, 1);
+    } else {
+       // 首次捕获
+       const stream = canvas.captureStream(30);
+       video.srcObject = stream;
+       // 强制播放，解决某些浏览器黑屏
+       video.play().then(() => {}).catch((e) => console.log("PiP play fix:", e));
     }
   };
 
@@ -855,12 +883,28 @@ export default function LevelUpApp() {
     }
   };
 
-  // --- 4. 新增：实时更新悬浮窗画面 ---
+ // --- 4. 优化：实时更新悬浮窗画面 (加入定时刷新防黑屏) ---
   useEffect(() => {
-     // 只有当计时器激活，或者悬浮窗打开时才更新
-     if (isActive || isPipActive) {
+     let intervalId;
+     
+     // 只要悬浮窗开着，就开启一个高频刷新器
+     if (isPipActive) {
+        // 立即画一次
+        updatePiP(timeLeft, mode);
+        
+        // 每秒强制刷新一次画面 (防止视频流因画面静止被浏览器暂停导致黑屏)
+        // 同时也负责驱动“时间到”时的闪烁效果
+        intervalId = setInterval(() => {
+            updatePiP(timeLeft, mode);
+        }, 500);
+     } else if (isActive) {
+        // 如果没开悬浮窗，但计时器在跑，只在 timeLeft 变化时更新 (这是上面的 useEffect 做的)
         updatePiP(timeLeft, mode);
      }
+
+     return () => {
+        if (intervalId) clearInterval(intervalId);
+     };
   }, [timeLeft, mode, isActive, isPipActive]);
 
   useEffect(() => {
@@ -1577,10 +1621,10 @@ export default function LevelUpApp() {
   return (
     <div ref={appContainerRef} className={`h-[100dvh] w-full bg-[#0a0a0a] text-gray-100 font-sans flex flex-col md:flex-row overflow-hidden relative selection:bg-cyan-500/30`}>
       <Toast notifications={notifications} removeNotification={removeNotification} />
-      
+   
       <div className="absolute opacity-0 pointer-events-none w-0 h-0 overflow-hidden">
-        <canvas ref={canvasRef} width={220} height={80} />
-        <video ref={videoRef} muted autoPlay playsInline />
+        <canvas ref={canvasRef} width={180} height={60} />
+        <video ref={videoRef} muted autoPlay playsInline loop />
       </div>
       
       <ConfirmDialog 
