@@ -819,7 +819,7 @@ export default function LevelUpApp() {
 
     // 2. 绘制时间文字
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 80px "Courier New", monospace'; // 使用等宽字体
+    ctx.font = 'bold 50px "Courier New", monospace'; // 使用等宽字体
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     
@@ -1579,7 +1579,7 @@ export default function LevelUpApp() {
       <Toast notifications={notifications} removeNotification={removeNotification} />
       
       <div className="absolute opacity-0 pointer-events-none w-0 h-0 overflow-hidden">
-        <canvas ref={canvasRef} width={300} height={150} />
+        <canvas ref={canvasRef} width={220} height={80} />
         <video ref={videoRef} muted autoPlay playsInline />
       </div>
       
