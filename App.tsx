@@ -873,109 +873,35 @@ export default function LevelUpApp() {
 
   useEffect(() => { loadData(); }, []);
 
- useEffect(() => {
-    const handleVisibilityChange = () => {
-      const storedTimerStateText = localStorage.getItem('levelup_timer_state');
-      
-      if (document.visibilityState === 'hidden' && isActive) {
-        // 1. 进入后台：保存状态，清除主线程循环计时器
-        saveTimerState(true, timeLeft, initialTime, mode);
-        clearInterval(timerRef.current);
-        timerRef.current = null;
-        
-        // 2. 【修复关键点】使用 Web Worker 替代 setTimeout
-        // Worker 在后台被冻结的几率比主线程小得多，能更准时提醒
-        if (timeLeft > 0) {
-           const msRemaining = timeLeft * 1000;
-           
-           // 清理旧的计时器或Worker
-           if (backgroundNotificationTimer.current) {
-              if (backgroundNotificationTimer.current.terminate) {
-                 backgroundNotificationTimer.current.terminate();
-              } else {
-                 clearTimeout(backgroundNotificationTimer.current);
-              }
-           }
-
-           // 创建一个临时的 Worker Blob
-           const workerBlob = new Blob([
-             `self.onmessage = function(e) { setTimeout(function() { self.postMessage('done'); }, e.data); }`
-           ], { type: "application/javascript" });
-
-           const worker = new Worker(URL.createObjectURL(workerBlob));
-           backgroundNotificationTimer.current = worker; // 将 Worker 存入 ref
-
-           worker.onmessage = () => {
-              const title = mode === 'focus' ? "🎉 专注完成！" : "💪 休息结束！";
-              const body = mode === 'focus' ? "你已完成专注，快回来打卡！" : "休息结束，开始学习吧！";
-              sendNotification(title, body);
-              worker.terminate(); // 发送完通知后自我销毁
-           };
-           
-           // 启动后台计时
-           worker.postMessage(msRemaining);
-        }
-
-      } else if (document.visibilityState === 'visible') {
-        if (!storedTimerStateText) return;
-        const storedTimerState = JSON.parse(storedTimerStateText);
-
-        // 3. 回到前台：清除后台 Worker（因为人回来了，不用后台弹窗了）
-        if (backgroundNotificationTimer.current) {
-           if (backgroundNotificationTimer.current.terminate) {
-              backgroundNotificationTimer.current.terminate();
-           } else {
-              clearTimeout(backgroundNotificationTimer.current);
-           }
-           backgroundNotificationTimer.current = null;
-        }
-
-        // 恢复时间逻辑（保持不变）
-        if (storedTimerState && storedTimerState.isActive) {
-          const now = Date.now();
-          const elapsed = (now - storedTimerState.timestamp) / 1000;
-          const recoveredTimeLeft = storedTimerState.timeLeft - elapsed;
-
-          if (recoveredTimeLeft > 1) {
-            setTimeLeft(Math.floor(recoveredTimeLeft));
-            setIsActive(true); 
-            addNotification("屏幕/切屏恢复，计时器继续！", "info");
-          } else {
-            handleTimerComplete();
-          }
-        }
-      }
-    };
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    // 主线程计时逻辑（保持不变）
+// --- 核心计时器逻辑 (纯净版：无后台暂停，无省电模式) ---
+  useEffect(() => {
+    // 只要是激活状态，就一直跑，不监听是否切后台
     if (isActive && timeLeft > 0) {
+      // 1. 记录开始状态
       saveTimerState(true, timeLeft, initialTime, mode); 
+      
+      // 2. 启动定时器 (每秒减1)
       timerRef.current = setInterval(() => { 
         setTimeLeft((prev) => {
           const newTime = Math.max(0, prev - 1);
+          // 实时保存，防止刷新丢失
           saveTimerState(true, newTime, initialTime, mode); 
           return newTime;
         }); 
       }, 1000);
+
     } else if (timeLeft <= 0 && isActive) {
+      // 3. 时间走完，触发完成逻辑
       handleTimerComplete();
+      
     } else if (!isActive) {
+      // 4. 如果是暂停状态，保存当前进度
       saveTimerState(false, timeLeft, initialTime, mode);
     }
     
+    // 组件卸载或状态变化时，清理旧的定时器，防止冲突
     return () => {
-      clearInterval(timerRef.current);
-      // 组件卸载时的清理逻辑
-      if (backgroundNotificationTimer.current) {
-          if (backgroundNotificationTimer.current.terminate) {
-             backgroundNotificationTimer.current.terminate();
-          } else {
-             clearTimeout(backgroundNotificationTimer.current);
-          }
-      }
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (timerRef.current) clearInterval(timerRef.current);
     };
   }, [isActive, timeLeft, initialTime, mode]);
 
