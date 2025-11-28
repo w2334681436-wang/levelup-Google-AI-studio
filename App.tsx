@@ -576,6 +576,23 @@ const MobileNav = ({
 export default function LevelUpApp() {
   const [loading, setLoading] = useState(true);
   // ... 其他 useState 都在这里 ...
+  // ... 其他 useRef ...
+  
+  // --- 修复通知 BUG 的核心代码 ---
+  // 1. 创建 Ref 来存储最新的状态
+  const showChatModalRef = useRef(showChatModal);
+  const unreadAIMessagesRef = useRef(unreadAIMessages);
+
+  // 2. 随时把最新的 State 同步给 Ref
+  useEffect(() => {
+    showChatModalRef.current = showChatModal;
+  }, [showChatModal]);
+
+  useEffect(() => {
+    unreadAIMessagesRef.current = unreadAIMessages;
+  }, [unreadAIMessages]);
+
+  // ...
 
   // --- 1. 新增：悬浮窗 (PiP) 相关的引用 ---
   const canvasRef = useRef(null);
@@ -1598,27 +1615,16 @@ export default function LevelUpApp() {
         }
       }
       
-      // If we are not in chat modal, update unread count
-      if (!showChatModal) {
-        saveUnreadMessages(unreadAIMessages + 1);
+
+
+      if (!showChatModalRef.current) {
+        saveUnreadMessages(unreadAIMessagesRef.current + 1);
       }
 
     } catch (error) {
-      const errorMessage = `⚠️ 连接失败: ${error.message}`;
-      setChatMessages(prev => {
-         // Replace empty placeholder with error
-         const newHistory = [...prev];
-         const lastMsgIndex = newHistory.findIndex(m => m.id === placeholderId);
-         if (lastMsgIndex !== -1) {
-             newHistory[lastMsgIndex] = { role: 'assistant', content: errorMessage };
-         } else {
-             newHistory.push({ role: 'assistant', content: errorMessage });
-         }
-         return newHistory;
-      });
-      
-      if (!showChatModal) {
-        saveUnreadMessages(unreadAIMessages + 1);
+
+      if (!showChatModalRef.current) {
+        saveUnreadMessages(unreadAIMessagesRef.current + 1);
       }
     } finally {
       setAiThinking(false);
