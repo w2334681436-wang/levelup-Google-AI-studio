@@ -574,30 +574,8 @@ const MobileNav = ({
 
 // --- 5. 主组件 ---
 export default function LevelUpApp() {
+  // 1. 先定义所有的 State (必须放在最前面！)
   const [loading, setLoading] = useState(true);
-  // ... 其他 useState 都在这里 ...
-  // ... 其他 useRef ...
-  
-  // --- 修复通知 BUG 的核心代码 ---
-  // 1. 创建 Ref 来存储最新的状态
-  const showChatModalRef = useRef(showChatModal);
-  const unreadAIMessagesRef = useRef(unreadAIMessages);
-
-  // 2. 随时把最新的 State 同步给 Ref
-  useEffect(() => {
-    showChatModalRef.current = showChatModal;
-  }, [showChatModal]);
-
-  useEffect(() => {
-    unreadAIMessagesRef.current = unreadAIMessages;
-  }, [unreadAIMessages]);
-
-  // ...
-
-  // --- 1. 新增：悬浮窗 (PiP) 相关的引用 ---
-  const canvasRef = useRef(null);
-  const videoRef = useRef(null);
-  const [isPipActive, setIsPipActive] = useState(false);
   
   // 核心状态
   const [mode, setMode] = useState('focus'); 
@@ -621,8 +599,8 @@ export default function LevelUpApp() {
   const [apiModel, setApiModel] = useState('deepseek-ai/DeepSeek-R1');
   const [selectedProvider, setSelectedProvider] = useState('siliconflow');
   const [customPersona, setCustomPersona] = useState(''); 
-  const [customUserBackground, setCustomUserBackground] = useState(''); // 新增：个人背景状态
-  const [zenQuote, setZenQuote] = useState(''); // 新增：存储禅模式金句
+  const [customUserBackground, setCustomUserBackground] = useState('');
+  const [zenQuote, setZenQuote] = useState('');
   const [deepThinkingMode, setDeepThinkingMode] = useState(false); 
   
   const [availableModels, setAvailableModels] = useState([]);
@@ -631,16 +609,16 @@ export default function LevelUpApp() {
   const [modelSearch, setModelSearch] = useState('');
   
   // 自定义气泡颜色
-  const [userBubbleColor, setUserBubbleColor] = useState('#059669'); // Emerald-600
-  const [aiBubbleColor, setAiBubbleColor] = useState('#ffffff'); // White
+  const [userBubbleColor, setUserBubbleColor] = useState('#059669');
+  const [aiBubbleColor, setAiBubbleColor] = useState('#ffffff');
 
-  // 聊天状态
+  // 聊天状态 (注意：showChatModal 和 unreadAIMessages 在这里定义)
   const [chatMessages, setChatMessages] = useState([]); 
   const [chatInput, setChatInput] = useState('');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [aiThinking, setAiThinking] = useState(false);
-  const [unreadAIMessages, setUnreadAIMessages] = useState(0);
-  const chatEndRef = useRef(null);
+  const [showChatModal, setShowChatModal] = useState(false); // <--- 定义在这里
+  const [unreadAIMessages, setUnreadAIMessages] = useState(0); // <--- 定义在这里
 
   // 图像识别状态
   const [selectedImages, setSelectedImages] = useState([]);
@@ -651,7 +629,6 @@ export default function LevelUpApp() {
   const [isManualLog, setIsManualLog] = useState(false); 
   const [manualDuration, setManualDuration] = useState(45); 
   const [showStopModal, setShowStopModal] = useState(false);
-  const [showChatModal, setShowChatModal] = useState(false); 
   const [showSettings, setShowSettings] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [logContent, setLogContent] = useState('');
@@ -663,11 +640,30 @@ export default function LevelUpApp() {
   const [confirmState, setConfirmState] = useState({ isOpen: false, title: '', message: '', onConfirm: () => {}, isDangerous: false, confirmText: '确定' });
   const [pendingImportData, setPendingImportData] = useState(null);
 
+  // 2. 然后定义 Refs (普通 Refs)
+  const chatEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const imageInputRef = useRef(null);
   const timerRef = useRef(null);
-  const backgroundNotificationTimer = useRef(null); // <--- 加在 timerRef 下面
   const appContainerRef = useRef(null);
+  const canvasRef = useRef(null);
+  const videoRef = useRef(null);
+  const [isPipActive, setIsPipActive] = useState(false); // PiP 状态
+
+  // 3. 【关键修复】定义用于追踪 State 的 Refs (必须放在 useState 之后！)
+  const showChatModalRef = useRef(showChatModal);
+  const unreadAIMessagesRef = useRef(unreadAIMessages);
+
+  // 4. 【关键修复】同步 State 到 Ref 的 useEffect
+  useEffect(() => {
+    showChatModalRef.current = showChatModal;
+  }, [showChatModal]);
+
+  useEffect(() => {
+    unreadAIMessagesRef.current = unreadAIMessages;
+  }, [unreadAIMessages]);
+
+  // ... (后面的代码不需要动：sendNotification, Toast 等组件逻辑，以及后续的 functions) ...
 
   // --- 通知系统逻辑 ---
   const addNotification = (message, type = 'info') => {
