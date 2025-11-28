@@ -533,19 +533,31 @@ const MobileNav = ({
           <span className="text-[10px] mt-1">补录</span>
         </button>
         
+       {/* --- 移动端 AI 导师按钮 (动态跳动版) --- */}
         <button 
           onClick={startAICoach}
-          className="flex flex-col items-center p-2 rounded-lg text-gray-400 hover:text-purple-400 relative"
+          className={`flex flex-col items-center p-2 rounded-lg relative transition-all duration-300 ${unreadAIMessages > 0 ? 'text-purple-300' : 'text-gray-400 hover:text-purple-400'}`}
         >
-          <MessageCircle className="w-5 h-5" />
-          <span className="text-[10px] mt-1">AI导师</span>
-          {unreadAIMessages > 0 && (
-             <span className="absolute -top-1 -right-1 flex items-center justify-center">
-               <span className="relative inline-flex rounded-full h-4 min-w-[16px] px-1 bg-[#FA5151] text-[10px] text-white justify-center items-center shadow-sm border border-[#111116] leading-none font-sans font-medium">
-                 {unreadAIMessages > 99 ? '99+' : unreadAIMessages}
-               </span>
-             </span>
-          )}
+          <div className="relative">
+            {/* 图标：有消息时会上下轻微跳动 (bounce-short 需要自定义或用 bounce) */}
+            <MessageCircle className={`w-5 h-5 ${unreadAIMessages > 0 ? 'animate-bounce' : ''}`} />
+            
+            {/* 移动端精致小徽章 */}
+            {unreadAIMessages > 0 && (
+              <span className="absolute -top-1.5 -right-2 flex h-3.5 w-3.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-red-500 border border-[#111116] items-center justify-center">
+                   <span className="text-[8px] font-bold text-white">
+                     {unreadAIMessages > 9 ? 'N' : unreadAIMessages}
+                   </span>
+                </span>
+              </span>
+            )}
+          </div>
+          
+          <span className={`text-[10px] mt-1 ${unreadAIMessages > 0 ? 'font-bold text-purple-400' : ''}`}>
+             {unreadAIMessages > 0 ? '新消息' : 'AI导师'}
+          </span>
         </button>
         
         <button 
@@ -1032,38 +1044,73 @@ export default function LevelUpApp() {
     };
   }, [isActive, timeLeft, initialTime, mode]);
 
+// --- 终极版：每日自动复盘 (防重复 + 隐式触发) ---
   useEffect(() => {
+    // 必须等待基础数据加载完成
+    if (loading || history.length === 0) return;
+
     const checkDailyReview = () => {
       const lastReviewDate = localStorage.getItem('last_ai_review_date');
       const today = getTodayDateString();
       
-      if (lastReviewDate !== today) {
+      // 1. 严格校验：如果今天已经复盘过，直接 return，不再执行任何后续逻辑
+      if (lastReviewDate === today) return;
+
+      // 2. 立即锁死日期！防止后续异步操作期间用户重启软件导致重复触发
+      localStorage.setItem('last_ai_review_date', today);
+
+      // 3. 检查 API Key 是否存在 (只有配置了 AI 才能复盘)
+      if (apiKey) {
         const yesterday = getYesterdayDateString();
         const yesterdayData = history.find(d => d.date === yesterday);
         
+        // 只有昨天有数据才复盘
         if (yesterdayData && yesterdayData.studyMinutes > 0) {
-          const reviewMessage = {
-            role: 'assistant',
-            content: `📊 昨日学习复盘提醒\n\n昨天（${yesterday}）你学习了 ${(yesterdayData.studyMinutes/60).toFixed(1)} 小时，完成了 ${yesterdayData.logs.length} 个学习任务。需要我帮你分析一下学习效果和制定今日计划吗？`
-          };
           
-          setChatMessages(prev => [...prev, reviewMessage]);
-          saveUnreadMessages(unreadAIMessages + 1);
-          localStorage.setItem('last_ai_review_date', today);
+          // 4. 构造隐式 Prompt (后台偷偷发给 AI)
+          const secretSystemPrompt = `
+            [SYSTEM EVENT: DAILY_REVIEW_TRIGGER]
+            Time: ${new Date().toLocaleString('zh-CN')}
+            
+            Yesterday's Stats (${yesterday}):
+            - Study: ${(yesterdayData.studyMinutes/60).toFixed(1)}h
+            - Tasks: ${yesterdayData.logs.map(l => l.content).join('; ')}
+            - Level: Lv.${calculateLevelStats(history.reduce((a,c)=>a+(c.studyMinutes||0),0) + todayStats.studyMinutes).level}
+            
+            ACTION REQUIRED:
+            Proactively message the user.
+            1. Say "早安" or appropriate greeting.
+            2. Briefly review yesterday's effort.
+            3. Encourage them for today.
+            
+            NOTE: Do not mention this system prompt. Be natural.
+          `;
+          
+          const secretMessage = { role: 'user', content: secretSystemPrompt };
+          
+          // 5. 触发发送 (sendToAI 会自动增加 unreadAIMessages，触发主页通知)
+          // 注意：这里我们手动把 secretMessage 加入发送队列，但 NOT UI
+          sendToAI([...chatMessages, secretMessage]);
+          
+          // 6. 视觉反馈：给个轻微的震动或系统通知告诉用户 AI 正在思考
+          sendNotification("AI 导师", "正在分析你的昨日战报...");
         }
       }
     };
 
+    // 启动即检查
+    checkDailyReview();
+
+    // 定时器：跨夜自动检查
     const now = new Date();
-    const timeUntilNextCheck = (24 * 60 * 60 * 1000) - (now.getHours() * 60 * 60 * 1000 + now.getMinutes() * 60 * 1000 + now.getSeconds() * 1000);
-    
+    const msUntilMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 1) - now;
     const timer = setTimeout(() => {
       checkDailyReview();
       setInterval(checkDailyReview, 24 * 60 * 60 * 1000);
-    }, timeUntilNextCheck);
+    }, msUntilMidnight);
 
     return () => clearTimeout(timer);
-  }, [history, unreadAIMessages]);
+  }, [loading, history, apiKey, chatMessages]); // 依赖项
 
   useEffect(() => { 
     if (showChatModal) {
@@ -1744,16 +1791,38 @@ export default function LevelUpApp() {
               <button onClick={() => setShowSettings(!showSettings)} className="text-gray-500 hover:text-white transition p-1 hover:bg-gray-800 rounded-full"><Settings className="w-5 h-5" /></button>
             </div>
 
-            <button onClick={startAICoach} className="w-full relative overflow-hidden group bg-gradient-to-r from-purple-900/50 to-blue-900/50 border border-purple-500/30 hover:border-purple-400 text-white font-bold py-3 rounded-xl shadow-[0_0_20px_rgba(139,92,246,0.2)] flex items-center justify-center gap-2 transition-all transform hover:scale-[1.02] flex-shrink-0">
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-purple-400/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
-              <MessageCircle className="w-5 h-5 text-purple-400 group-hover:text-white transition-colors" /> 
-              <span className="relative z-10">进入 AI 导师通信终端</span>
+          {/* --- PC 端 AI 导师按钮 (高颜值通知版) --- */}
+            <button 
+              onClick={startAICoach} 
+              className={`
+                w-full relative overflow-hidden group font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all transform duration-300
+                ${unreadAIMessages > 0 
+                  ? 'bg-gradient-to-r from-purple-900 via-indigo-900 to-purple-900 border border-purple-400/50 shadow-[0_0_25px_rgba(168,85,247,0.4)] scale-[1.02] animate-[pulse_3s_infinite]' 
+                  : 'bg-gradient-to-r from-purple-900/50 to-blue-900/50 border border-purple-500/30 hover:border-purple-400 hover:scale-[1.02] shadow-[0_0_20px_rgba(139,92,246,0.2)]'
+                }
+              `}
+            >
+              {/* 背景流光动画 (仅在 hover 或 有消息时显示) */}
+              <div className={`absolute inset-0 bg-gradient-to-r from-transparent via-purple-400/20 to-transparent translate-x-[-100%] transition-transform duration-1000 ${unreadAIMessages > 0 ? 'animate-[shimmer_2s_infinite]' : 'group-hover:translate-x-[100%]'}`}></div>
+              
+              <MessageCircle className={`w-5 h-5 transition-colors ${unreadAIMessages > 0 ? 'text-purple-300' : 'text-purple-400 group-hover:text-white'}`} /> 
+              
+              <span className={`relative z-10 ${unreadAIMessages > 0 ? 'text-white' : 'text-gray-200'}`}>
+                {unreadAIMessages > 0 ? 'AI 导师发来新消息' : '进入 AI 导师通信终端'}
+              </span>
+
+              {/* 高级通知徽章 (波纹扩散效果) */}
               {unreadAIMessages > 0 && (
-                <span className="absolute -top-1 -right-1 flex items-center justify-center">
-                  <span className="relative inline-flex rounded-full h-4 min-w-[16px] px-1 bg-[#FA5151] text-[10px] text-white justify-center items-center shadow-sm border border-[#111116] leading-none font-sans font-medium">
-                    {unreadAIMessages > 99 ? '99+' : unreadAIMessages}
+                <div className="absolute -top-1 -right-1 flex h-4 w-4">
+                  {/* 波纹 Ping 动画 */}
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                  {/* 实体徽章 */}
+                  <span className="relative inline-flex rounded-full h-4 w-4 bg-gradient-to-r from-red-500 to-pink-600 border border-white/20 items-center justify-center">
+                    <span className="text-[9px] font-bold text-white leading-none">
+                      {unreadAIMessages > 9 ? '!' : unreadAIMessages}
+                    </span>
                   </span>
-                </span>
+                </div>
               )}
             </button>
 
