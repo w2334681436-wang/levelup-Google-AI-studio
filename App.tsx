@@ -203,6 +203,90 @@ const initialProgress = {
   cs: { content: "数据结构完成了链表和栈的初步学习。", lastUpdate: getTodayDateString() },
 };
 
+// --- 新增：等级系统逻辑 ---
+// 专家设计：采用非线性升级曲线，前期升级快（正反馈强），后期升级慢（不仅是积累，更是沉淀）
+// 设定：每 60 分钟 = 100 XP。
+// 升级所需 XP = 当前等级 * 100 * 1.2 (难度递增)
+const calculateLevelStats = (totalMinutes) => {
+  const XP_PER_HOUR = 100;
+  let currentXp = totalMinutes * (XP_PER_HOUR / 60); // 总经验值
+  let level = 1;
+  let xpForNextLevel = 100; // 初始升级经验
+  
+  // 循环扣除经验升级
+  while (currentXp >= xpForNextLevel) {
+    currentXp -= xpForNextLevel;
+    level++;
+    xpForNextLevel = Math.floor(xpForNextLevel * 1.1); // 每一级难度增加 10%
+  }
+
+  // 获得称号
+  const getTitle = (lv) => {
+    if (lv <= 5) return "考研萌新";
+    if (lv <= 10) return "自律学徒";
+    if (lv <= 20) return "专注达人";
+    if (lv <= 35) return "学术精英";
+    if (lv <= 50) return "卷王之王";
+    if (lv <= 70) return "准研究生";
+    return "学术泰斗";
+  };
+
+  return {
+    level,
+    currentXp: Math.floor(currentXp),
+    xpForNextLevel: Math.floor(xpForNextLevel),
+    progressPercent: Math.min((currentXp / xpForNextLevel) * 100, 100),
+    title: getTitle(level)
+  };
+};
+
+// --- 新增：等级展示组件 ---
+const UserLevelSystem = ({ history, todayMinutes }) => {
+  // 计算总时长：历史记录 + 今天的时长
+  const totalHistoryMinutes = history.reduce((acc, curr) => acc + (curr.studyMinutes || 0), 0);
+  const totalAllTime = totalHistoryMinutes + todayMinutes;
+  
+  const stats = calculateLevelStats(totalAllTime);
+
+  return (
+    <div className="bg-gradient-to-r from-gray-900 to-gray-800 p-4 rounded-xl border border-gray-700 shadow-lg relative overflow-hidden group">
+      {/* 背景特效 */}
+      <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:bg-cyan-500/20 transition-all"></div>
+      
+      <div className="flex justify-between items-end mb-2 relative z-10">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 bg-gradient-to-br from-cyan-400 to-blue-600 rounded-lg flex items-center justify-center shadow-lg transform rotate-3 group-hover:rotate-6 transition-transform">
+             <span className="font-black text-xl text-white italic">Lv.{stats.level}</span>
+          </div>
+          <div>
+            <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Current Rank</div>
+            <div className="text-white font-bold bg-clip-text text-transparent bg-gradient-to-r from-cyan-300 to-blue-300">
+              {stats.title}
+            </div>
+          </div>
+        </div>
+        <div className="text-right">
+           <div className="text-xs text-cyan-400 font-mono font-bold">
+             {stats.currentXp} <span className="text-gray-500">/</span> {stats.xpForNextLevel} XP
+           </div>
+           <div className="text-[10px] text-gray-500">总投入: {(totalAllTime / 60).toFixed(1)} 小时</div>
+        </div>
+      </div>
+
+      {/* 经验条 */}
+      <div className="h-3 w-full bg-black/40 rounded-full overflow-hidden border border-white/5 relative z-10">
+        <div 
+          className="h-full bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-500 shadow-[0_0_10px_rgba(6,182,212,0.5)] transition-all duration-1000 ease-out relative"
+          style={{ width: `${stats.progressPercent}%` }}
+        >
+          {/* 扫光动画 */}
+          <div className="absolute inset-0 bg-white/30 w-full animate-[shimmer_2s_infinite] translate-x-[-100%]"></div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // --- 4. 组件：学习进度面板 ---
 const LearningProgressPanel = ({ learningProgress, onProgressUpdate, isMobileView }) => {
   const [editingSubject, setEditingSubject] = useState(null);
@@ -995,7 +1079,7 @@ export default function LevelUpApp() {
 
   const updateStudyStats = (seconds, log) => {
     const m = Math.floor(seconds / 60);
-    const g = Math.floor(m / 4.5); 
+    const g = Math.floor(m / 9); 
     const newStats = { 
       ...todayStats, 
       studyMinutes: todayStats.studyMinutes + m, 
@@ -1673,6 +1757,8 @@ export default function LevelUpApp() {
               )}
             </button>
 
+            <UserLevelSystem history={history} todayMinutes={todayStats.studyMinutes} />
+          
             <button 
               onClick={() => setShowHistory(true)}
               className="w-full bg-blue-900/30 border border-blue-500/30 hover:border-blue-400 text-blue-400 font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all"
@@ -1764,6 +1850,7 @@ export default function LevelUpApp() {
         </div>
 
         <div className={`md:hidden w-full space-y-4 pt-4 overflow-y-auto ${activeView !== 'stats' ? 'hidden' : ''}`}>
+          <UserLevelSystem history={history} todayMinutes={todayStats.studyMinutes} />
           <div className="bg-[#111116] rounded-xl p-4 border border-gray-800">
             <div className="flex items-center gap-2 mb-3">
               <BarChart3 className="w-5 h-5 text-emerald-400" />
@@ -2207,7 +2294,7 @@ export default function LevelUpApp() {
                )}
 
                <div><label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">本次成果 (Log Content)</label><textarea value={logContent} onChange={(e) => setLogContent(e.target.value)} placeholder="做了什么？(例如：完成了660题第二章前10题，理解了泰勒公式展开...)" className="w-full bg-black/50 border border-gray-700 rounded-xl p-4 text-gray-200 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 min-h-[120px] resize-none text-sm placeholder:text-gray-700" autoFocus /></div>
-               <button onClick={saveLog} disabled={!logContent.trim()} className="w-full bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-emerald-900/20 flex items-center justify-center gap-2"><Save className="w-4 h-4" /> 存入档案并休息 (+{isManualLog ? Math.floor(manualDuration/4.5) : Math.floor(pendingStudyTime/60/4.5)}m 券)</button>
+               <button onClick={saveLog} disabled={!logContent.trim()} className="w-full bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-emerald-900/20 flex items-center justify-center gap-2"><Save className="w-4 h-4" /> 存入档案并休息 (+{isManualLog ? Math.floor(manualDuration/9) : Math.floor(pendingStudyTime/60/4.5)}m 券)</button>
             </div>
             
             <button onClick={() => setShowLogModal(false)} className="absolute top-4 right-4 text-gray-500 hover:text-white"><X className="w-5 h-5"/></button>
