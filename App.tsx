@@ -580,6 +580,93 @@ const MobileNav = ({ 
 // --- 音效文件 (Base64) ---
   const ALARM_SOUND = "data:audio/mp3;base64,SUQzBAAAAAAAI1RTSVAAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//OEAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAEAAABIwAXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcX//OEAAAAAAAAAAAAAAAAAAAAAAAAMWxhdmeAAAAAAAAAAAAAAAAAAAAAAAAdasAAEstAAAAAAAAAAEjAAAAAAAAAAA//uQZAAAAAAAABAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//uQZAACAAAAAkAAAAJA0AAAAAAAAAAkgAAAAAAAACSAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 
+// --- 顶级 UI：金色粒子特效组件 ---
+const GoldParticles = () => {
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    let animationFrameId;
+    let particles = [];
+
+    const resize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    window.addEventListener('resize', resize);
+    resize();
+
+    class Particle {
+      constructor() {
+        this.reset(true);
+      }
+      
+      reset(initial = false) {
+        this.x = Math.random() * canvas.width;
+        this.y = initial ? Math.random() * canvas.height : canvas.height + 10;
+        this.speed = 0.5 + Math.random() * 1.5;
+        this.size = 0.5 + Math.random() * 2;
+        this.opacity = 0.1 + Math.random() * 0.5;
+        this.fadeSpeed = 0.002 + Math.random() * 0.005;
+        this.wobble = Math.random() * Math.PI * 2;
+      }
+
+      update() {
+        this.y -= this.speed;
+        this.wobble += 0.05;
+        this.x += Math.sin(this.wobble) * 0.3; // 轻微左右摇摆
+        this.opacity -= this.fadeSpeed;
+
+        if (this.y < -10 || this.opacity <= 0) {
+          this.reset();
+        }
+      }
+
+      draw() {
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(251, 191, 36, ${this.opacity})`; // Amber-400 gold
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = "rgba(245, 158, 11, 0.5)"; // Glow effect
+        ctx.fill();
+      }
+    }
+
+    // 初始化粒子数量
+    const particleCount = Math.min(100, (window.innerWidth * window.innerHeight) / 10000);
+    for (let i = 0; i < particleCount; i++) {
+      particles.push(new Particle());
+    }
+
+    const animate = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      // 绘制微弱的金色光晕背景
+      const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      gradient.addColorStop(0, 'rgba(0,0,0,0)');
+      gradient.addColorStop(1, 'rgba(251, 191, 36, 0.05)');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      particles.forEach(p => {
+        p.update();
+        p.draw();
+      });
+      animationFrameId = requestAnimationFrame(animate);
+    };
+
+    animate();
+
+    return () => {
+      window.removeEventListener('resize', resize);
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, []);
+
+  return <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none z-0 mix-blend-screen" />;
+};
 
 // --- 5. 主组件 ---
 export default function LevelUpApp() {
@@ -589,7 +676,7 @@ export default function LevelUpApp() {
   
   // 核心状态
   const [mode, setMode] = useState('focus'); 
-  const [timeLeft, setTimeLeft] = useState(45 * 60);
+  const [timeLeft, setTimeLeft] = useState(5);
   const [isActive, setIsActive] = useState(false);
   const [initialTime, setInitialTime] = useState(45 * 60);
   const [lastActiveTime, setLastActiveTime] = useState(null); 
@@ -1017,25 +1104,29 @@ if (storedTimerState.isActive && storedTimerState.timestamp) {
     }
   };
 
-  // --- 3. 新增：切换悬浮窗开关 ---
-  const togglePiP = async () => {
-    try {
-      if (document.pictureInPictureElement) {
-        // 如果已经开了，就关掉
-        await document.exitPictureInPicture();
-        setIsPipActive(false);
-      } else if (videoRef.current) {
-        // 先更新一次画面，防止黑屏
-        updatePiP(timeLeft, mode);
-        // 请求进入画中画
-        await videoRef.current.requestPictureInPicture();
-        setIsPipActive(true);
-      }
-    } catch (err) {
-      console.error(err);
-      addNotification("开启悬浮窗失败，请在浏览器设置中允许，或先点击开始计时。", "error");
-    }
-  };
+ // --- 3. 新增：切换悬浮窗开关 (修复版) ---
+  const togglePiP = async () => {
+    try {
+      if (document.pictureInPictureElement) {
+        await document.exitPictureInPicture();
+        setIsPipActive(false);
+      } else if (videoRef.current && canvasRef.current) {
+        // 关键修复：在请求 PiP 之前，先强制画一帧，确保流有数据
+        updatePiP(timeLeft, mode);
+        
+        // 确保视频处于播放状态（防止浏览器为了省电暂停了看不见的视频）
+        if (videoRef.current.paused) {
+            await videoRef.current.play().catch(() => {});
+        }
+
+        await videoRef.current.requestPictureInPicture();
+        setIsPipActive(true);
+      }
+    } catch (err) {
+      console.error(err);
+      addNotification("开启失败，请尝试先点击开始计时", "error");
+    }
+  };
 
  // --- 4. 优化：实时更新悬浮窗画面 (加入定时刷新防黑屏) ---
   useEffect(() => {
@@ -1881,24 +1972,32 @@ if (storedTimerState.isActive && storedTimerState.timestamp) {
 
   if (loading) return <div className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center font-mono animate-pulse">正在载入系统...</div>;
 
-  return (
-    <div ref={appContainerRef} className={`h-[100dvh] w-full bg-[#0a0a0a] text-gray-100 font-sans flex flex-col md:flex-row overflow-hidden relative selection:bg-cyan-500/30`}>
-            <style>{`
-  @keyframes cyber-flow {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
-  }
-  .cyber-gradient {
-    background: linear-gradient(270deg, #ec4899, #8b5cf6, #06b6d4, #ec4899);
-    background-size: 300% 300%;
-    animation: cyber-flow 3s ease infinite;
-  }
-`}</style>
-            <Toast notifications={notifications} removeNotification={removeNotification} />
-   {/* --- 修复黑屏关键点：必须给容器 1px 的大小，浏览器才会实时渲染 Canvas --- */}
-      <div className="absolute opacity-0 pointer-events-none overflow-hidden" style={{ width: '1px', height: '1px', left: '-9999px', top: '-9999px' }}>
-        <canvas ref={canvasRef} width={300} height={100} /> {/* 稍微加大一点画布分辨率更清晰 */}
+ return (
+    <div ref={appContainerRef} className={`h-[100dvh] w-full bg-[#0a0a0a] text-gray-100 font-sans flex flex-col md:flex-row overflow-hidden relative selection:bg-cyan-500/30`}>
+      
+      {/* 1. CSS 动画样式保持不变 */}
+      <style>{`
+        @keyframes cyber-flow {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        .cyber-gradient {
+          background: linear-gradient(270deg, #ec4899, #8b5cf6, #06b6d4, #ec4899);
+          background-size: 300% 300%;
+          animation: cyber-flow 3s ease infinite;
+        }
+      `}</style>
+      
+      <Toast notifications={notifications} removeNotification={removeNotification} />
+   
+      {/* 2. 【关键修改】这里是新的 PiP 画布容器 */}
+      {/* 删掉原来那个 "absolute opacity-0..." 的 div，用下面这个替换 */}
+      <div 
+        className="fixed pointer-events-none overflow-hidden" 
+        style={{ width: '1px', height: '1px', right: '0', bottom: '0', opacity: 0.01, zIndex: -1 }}
+      >
+        <canvas ref={canvasRef} width={300} height={100} />
         <video ref={videoRef} muted autoPlay playsInline loop />
       </div>
       
@@ -1921,6 +2020,12 @@ if (storedTimerState.isActive && storedTimerState.timestamp) {
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(20,20,40,0.4),transparent_70%)] pointer-events-none"></div>
       <div className="absolute inset-0 opacity-5 pointer-events-none mix-blend-overlay" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")` }}></div>
 
+{mode === 'overtime' && (
+         <div className="absolute inset-0 animate-in fade-in duration-1000 z-0">
+             <GoldParticles />
+         </div>
+      )}
+            
       {/* --- 左侧边栏 (动画优化：duration-500 + ease-out 更轻快) --- */}
       <div className={`hidden md:flex flex-col bg-[#111116] gap-4 z-20 h-full relative group scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${isZen ? 'w-0 min-w-0 p-0 opacity-0 border-none pointer-events-none overflow-hidden' : 'w-96 p-6 border-r border-gray-800 opacity-100 overflow-y-auto'}`}>
         <div className="absolute inset-0 bg-gradient-to-br from-blue-900/10 via-purple-900/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
