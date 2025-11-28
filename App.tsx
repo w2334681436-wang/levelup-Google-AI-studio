@@ -577,10 +577,15 @@ const MobileNav = ({ 
   );
 };
 
+// --- 音效文件 (Base64) ---
+  const ALARM_SOUND = "data:audio/mp3;base64,SUQzBAAAAAAAI1RTSVAAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//OEAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAEAAABIwAXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcX//OEAAAAAAAAAAAAAAAAAAAAAAAAMWxhdmeAAAAAAAAAAAAAAAAAAAAAAAAdasAAEstAAAAAAAAAAEjAAAAAAAAAAA//uQZAAAAAAAABAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//uQZAACAAAAAkAAAAJA0AAAAAAAAAAkgAAAAAAAACSAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+
+
 // --- 5. 主组件 ---
 export default function LevelUpApp() {
   // 1. 先定义所有的 State (必须放在最前面！)
   const [loading, setLoading] = useState(true);
+        
   
   // 核心状态
   const [mode, setMode] = useState('focus'); 
@@ -592,6 +597,9 @@ export default function LevelUpApp() {
   const [isZen, setIsZen] = useState(false);
   const [customTargetHours, setCustomTargetHours] = useState(null); 
   const [activeView, setActiveView] = useState('timer'); 
+  const [showTimeUpModal, setShowTimeUpModal] = useState(false); // 询问弹窗状态
+  const [overtimeSeconds, setOvertimeSeconds] = useState(0);     // 加时秒数
+  const audioRef = useRef(null);                                 // 音频引用
   
   // 数据状态
   const [todayStats, setTodayStats] = useState({ date: getTodayDateString(), studyMinutes: 0, gameBank: 0, gameUsed: 0, logs: [] });
@@ -644,7 +652,11 @@ export default function LevelUpApp() {
   const [notifications, setNotifications] = useState([]);
   const [confirmState, setConfirmState] = useState({ isOpen: false, title: '', message: '', onConfirm: () => {}, isDangerous: false, confirmText: '确定' });
   const [pendingImportData, setPendingImportData] = useState(null);
-
+        // --- 新增状态 ---
+  // 增加 'overtime' 模式
+  // mode 的定义变为: 'focus' | 'break' | 'gaming' | 'overtime'
+  
+  
   // 2. 然后定义 Refs (普通 Refs)
   const chatEndRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -818,24 +830,42 @@ export default function LevelUpApp() {
       if (storedTimerStateText) {
         const storedTimerState = JSON.parse(storedTimerStateText);
         
-        if (storedTimerState.isActive && storedTimerState.timestamp) {
-          const elapsed = (Date.now() - storedTimerState.timestamp) / 1000;
-          const recoveredTimeLeft = storedTimerState.timeLeft - elapsed;
+if (storedTimerState.isActive && storedTimerState.timestamp) {
+          const elapsed = (Date.now() - storedTimerState.timestamp) / 1000;
+          
+          // --- 修复开始：区分加时模式和普通模式 ---
+          let recoveredTimeLeft;
+          if (storedTimerState.mode === 'overtime') {
+             // 加时模式是“正计时”，所以要加上流逝的时间
+             recoveredTimeLeft = storedTimerState.timeLeft + elapsed;
+          } else {
+             // 专注/休息模式是“倒计时”，所以要减去流逝的时间
+             recoveredTimeLeft = storedTimerState.timeLeft - elapsed;
+          }
+          // --- 修复结束 ---
 
-          if (recoveredTimeLeft > 1) { 
-            setTimeLeft(Math.floor(recoveredTimeLeft));
-            setInitialTime(storedTimerState.initialTime);
-            setMode(storedTimerState.mode);
-            setTimeout(() => {
-                setIsActive(true);
-                addNotification(`倒计时已从上次进度恢复: ${formatTime(Math.floor(recoveredTimeLeft))}`, "success");
-            }, 100); 
-            
-          } else {
-            addNotification("应用恢复，但计时器已超时，请重新开始或打卡。", "info");
-            saveTimerState(false, 45 * 60, 45 * 60, 'focus'); 
-          }
-        } else {
+          // 判断逻辑调整：如果是加时模式，或者普通模式时间未耗尽
+          if (storedTimerState.mode === 'overtime' || recoveredTimeLeft > 1) { 
+            setTimeLeft(Math.floor(recoveredTimeLeft));
+            setInitialTime(storedTimerState.initialTime);
+            setMode(storedTimerState.mode);
+            
+            // 如果是加时模式，顺便恢复 overtimeSeconds
+            if (storedTimerState.mode === 'overtime') {
+               setOvertimeSeconds(Math.floor(recoveredTimeLeft));
+            }
+
+            setTimeout(() => {
+                setIsActive(true);
+                addNotification(`已恢复进度: ${formatTime(Math.floor(recoveredTimeLeft))}`, "success");
+            }, 100); 
+            
+          } else {
+            addNotification("应用恢复，但计时器已超时，请重新开始或打卡。", "info");
+            saveTimerState(false, 45 * 60, 45 * 60, 'focus'); 
+          }
+        } else {
+          // ... (后面的代码保持不变)
           setInitialTime(storedTimerState.initialTime);
           setTimeLeft(storedTimerState.timeLeft);
           setMode(storedTimerState.mode);
@@ -1030,37 +1060,51 @@ export default function LevelUpApp() {
 
   useEffect(() => { loadData(); }, []);
 
-// --- 核心计时器逻辑 (纯净版：无后台暂停，无省电模式) ---
-  useEffect(() => {
-    // 只要是激活状态，就一直跑，不监听是否切后台
-    if (isActive && timeLeft > 0) {
-      // 1. 记录开始状态
-      saveTimerState(true, timeLeft, initialTime, mode); 
-      
-      // 2. 启动定时器 (每秒减1)
-      timerRef.current = setInterval(() => { 
-        setTimeLeft((prev) => {
-          const newTime = Math.max(0, prev - 1);
-          // 实时保存，防止刷新丢失
-          saveTimerState(true, newTime, initialTime, mode); 
-          return newTime;
-        }); 
-      }, 1000);
+ // --- 核心计时器逻辑 (已修改：支持加时模式) ---
+  useEffect(() => {
+    if (isActive) {
+      // 1. 记录开始状态
+      saveTimerState(true, timeLeft, initialTime, mode);
+      
+      timerRef.current = setInterval(() => {
+        if (mode === 'overtime') {
+           // >>> 加时模式：正计时 <<<
+           setTimeLeft((prev) => prev + 1); 
+           setOvertimeSeconds((prev) => prev + 1);
+        } else {
+           // >>> 普通模式：倒计时 <<<
+           setTimeLeft((prev) => {
+             const newTime = prev - 1;
+             
+             // A. 如果专注时间到了 (Focus Time Up)
+             if (newTime <= 0 && mode === 'focus') {
+               clearInterval(timerRef.current);
+               handleFocusTimeUp(); // 触发询问弹窗
+               return 0;
+             }
+             
+             // B. 如果休息或游戏时间到了
+             if (newTime <= 0 && mode !== 'focus') {
+                clearInterval(timerRef.current);
+                handleTimerComplete();
+                return 0;
+             }
 
-    } else if (timeLeft <= 0 && isActive) {
-      // 3. 时间走完，触发完成逻辑
-      handleTimerComplete();
-      
-    } else if (!isActive) {
-      // 4. 如果是暂停状态，保存当前进度
-      saveTimerState(false, timeLeft, initialTime, mode);
-    }
-    
-    // 组件卸载或状态变化时，清理旧的定时器，防止冲突
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [isActive, timeLeft, initialTime, mode]);
+             return newTime;
+           }); 
+        }
+      }, 1000);
+
+    } else {
+      // 暂停状态
+      if (timerRef.current) clearInterval(timerRef.current);
+      saveTimerState(false, timeLeft, initialTime, mode);
+    }
+    
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [isActive, timeLeft, initialTime, mode]);
 
 // --- 终极版：每日自动复盘 (防重复 + 隐式触发) ---
   useEffect(() => {
@@ -1316,28 +1360,78 @@ export default function LevelUpApp() {
 
   const triggerStopTimer = () => setShowStopModal(true);
   
-  const confirmStopTimer = () => { 
-    setShowStopModal(false); 
-    setIsActive(false); 
-    setIsZen(false); 
-    
-    if(document.fullscreenElement) document.exitFullscreen().catch(()=>{}); 
 
-    if (mode === 'gaming') {
-      // 游戏模式：扣除已用时间，保留剩余时间
-      updateGameStats(initialTime - timeLeft);
-      setInitialTime(timeLeft); // 将当前剩余时间设为新的起点
-      // timeLeft 保持不变
-      saveTimerState(false, timeLeft, timeLeft, mode);
-      addNotification("游戏暂停，剩余时间已保存", "info");
-    } else {
-      // 学习模式：重置回初始设定时间
-      const newTimeLeft = initialTime;
-      setTimeLeft(newTimeLeft); 
-      saveTimerState(false, newTimeLeft, initialTime, mode);
-      addNotification("计时已取消", "info");
-    }
-  };
+  // --- 音效控制函数 ---
+  const playAlarm = () => {
+    if (!audioRef.current) {
+      audioRef.current = new Audio(ALARM_SOUND);
+      audioRef.current.loop = true; // 循环播放
+    }
+    audioRef.current.play().catch(e => console.log("Play error", e));
+  };
+
+  const stopAlarm = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+  };
+
+  // --- 专注结束处理 ---
+  const handleFocusTimeUp = () => {
+    setIsActive(false); 
+    playAlarm(); 
+    setShowTimeUpModal(true); 
+    sendNotification("🔔 专注时间达成！", "已完成设定目标。是否要进入加时模式？");
+  };
+
+  const startOvertime = () => {
+    stopAlarm();
+    setShowTimeUpModal(false);
+    setMode('overtime');
+    setInitialTime(initialTime); 
+    setTimeLeft(0); 
+    setOvertimeSeconds(0);
+    setIsActive(true);
+    addNotification("🔥 开启【黄金加时】模式！无上限冲刺！", "success");
+  };
+
+  const finishAndRest = () => {
+    stopAlarm();
+    setShowTimeUpModal(false);
+    setPendingStudyTime(initialTime); 
+    setIsManualLog(false); 
+    setShowLogModal(true);
+  };
+
+  // --- 修改后的：确认停止计时 ---
+  const confirmStopTimer = () => { 
+    setShowStopModal(false); 
+    setIsActive(false); 
+    setIsZen(false); 
+    
+    if(document.fullscreenElement) document.exitFullscreen().catch(()=>{}); 
+
+    if (mode === 'gaming') {
+      updateGameStats(initialTime - timeLeft);
+      setInitialTime(timeLeft); 
+      saveTimerState(false, timeLeft, timeLeft, mode);
+      addNotification("游戏暂停，剩余时间已保存", "info");
+    } else if (mode === 'overtime') {
+      // >>> 加时模式结算逻辑 <<<
+      const totalTime = initialTime + timeLeft;
+      setPendingStudyTime(totalTime);
+      addNotification(`💪 太强了！额外加练了 ${Math.floor(timeLeft/60)} 分钟！`, "success");
+      setIsManualLog(false);
+      setShowLogModal(true);
+      saveTimerState(false, 45 * 60, 45 * 60, 'focus'); 
+    } else {
+      const newTimeLeft = initialTime;
+      setTimeLeft(newTimeLeft); 
+      saveTimerState(false, newTimeLeft, initialTime, mode);
+      addNotification("计时已取消", "info");
+    }
+  };
   
   const cancelStopTimer = () => setShowStopModal(false);
 
@@ -1761,17 +1855,19 @@ export default function LevelUpApp() {
   const currentTargetHours = customTargetHours || stage.targetHours;
   const dailyProgressPercent = currentTargetHours > 0 ? Math.min((todayStats.studyMinutes / (currentTargetHours*60)) * 100, 100) : 0;
 
-  const getThemeColor = () => {
-    if (mode === 'focus') return 'text-emerald-400 border-emerald-500 shadow-emerald-900/50';
-    if (mode === 'break') return 'text-blue-400 border-blue-500 shadow-blue-900/50';
-    if (mode === 'gaming') return 'text-purple-400 border-purple-500 shadow-purple-900/50';
-  };
-  
-  const getBgColor = () => {
-     if (mode === 'focus') return 'from-emerald-950/90 to-black';
-     if (mode === 'break') return 'from-blue-950/90 to-black';
-     if (mode === 'gaming') return 'from-purple-950/90 to-black';
-  };
+ const getThemeColor = () => {
+    if (mode === 'focus') return 'text-emerald-400 border-emerald-500 shadow-emerald-900/50';
+    if (mode === 'break') return 'text-blue-400 border-blue-500 shadow-blue-900/50';
+    if (mode === 'gaming') return 'text-purple-400 border-purple-500 shadow-purple-900/50';
+    if (mode === 'overtime') return 'text-amber-400 border-amber-500 shadow-amber-900/50 drop-shadow-[0_0_15px_rgba(251,191,36,0.5)]'; // 金色传说
+  };
+  
+  const getBgColor = () => {
+     if (mode === 'focus') return 'from-emerald-950/90 to-black';
+     if (mode === 'break') return 'from-blue-950/90 to-black';
+     if (mode === 'gaming') return 'from-purple-950/90 to-black';
+     if (mode === 'overtime') return 'from-amber-950/90 to-black'; // 金色背景
+  };
 
   if (loading) return <div className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center font-mono animate-pulse">正在载入系统...</div>;
 
@@ -2101,12 +2197,14 @@ export default function LevelUpApp() {
                </svg>
 
                <div className="flex flex-col items-center z-10 select-none">
-                 <div className={`font-mono font-bold tracking-tighter tabular-nums text-white drop-shadow-2xl transition-all duration-500 ${isZen ? 'text-6xl' : 'text-5xl md:text-7xl'}`}>
-                   {formatTime(timeLeft)}
+              {/* --- 修改时间显示：支持加时金色 --- */}
+                 <div className={`font-mono font-bold tracking-tighter tabular-nums text-white drop-shadow-2xl transition-all duration-500 ${isZen ? 'text-6xl' : 'text-5xl md:text-7xl'} ${mode === 'overtime' ? 'text-amber-400 drop-shadow-[0_0_15px_rgba(251,191,36,0.8)]' : ''}`}>
+                   {mode === 'overtime' ? `+${formatTime(timeLeft)}` : formatTime(timeLeft)}
                  </div>
                  
-                 <div className={`text-sm mt-4 font-bold tracking-widest uppercase transition-all duration-500 ${mode === 'focus' ? 'text-emerald-400' : mode === 'break' ? 'text-blue-400' : 'text-purple-400'} ${isZen ? 'opacity-50' : 'opacity-100'}`}>
-                   {mode === 'focus' ? 'DEEP WORK' : mode === 'break' ? 'RECHARGE' : 'GAME ON'}
+                 {/* --- 修改文字标签 --- */}
+                 <div className={`text-sm mt-4 font-bold tracking-widest uppercase transition-all duration-500 ${mode === 'focus' ? 'text-emerald-400' : mode === 'break' ? 'text-blue-400' : mode === 'gaming' ? 'text-purple-400' : 'text-amber-400'} ${isZen ? 'opacity-50' : 'opacity-100'}`}>
+                   {mode === 'focus' ? 'DEEP WORK' : mode === 'break' ? 'RECHARGE' : mode === 'gaming' ? 'GAME ON' : 'GOLDEN TIME'}
                  </div>
                  
                  {!isZen && mode === 'focus' && isActive && (
@@ -2184,6 +2282,38 @@ export default function LevelUpApp() {
           </div>
         </div>
       )}
+
+            {/* --- 新增：专注结束询问弹窗 --- */}
+      {showTimeUpModal && (
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[100] flex items-center justify-center p-4 animate-in fade-in zoom-in duration-300">
+          <div className="bg-gray-900 border-2 border-amber-500/50 rounded-3xl p-8 max-w-sm w-full shadow-[0_0_100px_rgba(245,158,11,0.3)] relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-tr from-amber-500/10 via-transparent to-emerald-500/10 animate-pulse"></div>
+            <div className="relative z-10 text-center">
+              <div className="w-20 h-20 mx-auto bg-gradient-to-br from-emerald-400 to-cyan-500 rounded-full flex items-center justify-center mb-6 shadow-xl animate-bounce">
+                <CheckCircle2 className="w-10 h-10 text-white" />
+              </div>
+              <h3 className="text-2xl font-black text-white mb-2 italic">EXCELLENT!</h3>
+              <p className="text-gray-300 mb-8">专注目标已达成。此刻状态如何？</p>
+              <div className="flex flex-col gap-3">
+                <button 
+                  onClick={startOvertime}
+                  className="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white font-bold py-4 rounded-xl transition-all transform hover:scale-105 shadow-[0_0_20px_rgba(245,158,11,0.4)] flex items-center justify-center gap-2 group"
+                >
+                  <Zap className="w-5 h-5 fill-current group-hover:animate-ping" />
+                  <span>状态正佳，进入加时！</span>
+                </button>
+                <button 
+                  onClick={finishAndRest}
+                  className="w-full bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold py-4 rounded-xl transition-all border border-gray-700 flex items-center justify-center gap-2"
+                >
+                  <Coffee className="w-5 h-5" />
+                  <span>存入记录并休息</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showChatModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-0 md:p-4 animate-in fade-in zoom-in duration-200">
