@@ -1758,7 +1758,7 @@ export default function LevelUpApp() {
 
   return (
     <div ref={appContainerRef} className={`h-[100dvh] w-full bg-[#0a0a0a] text-gray-100 font-sans flex flex-col md:flex-row overflow-hidden relative selection:bg-cyan-500/30`}>
-<style>{`
+            <style>{`
   @keyframes cyber-flow {
     0% { background-position: 0% 50%; }
     50% { background-position: 100% 50%; }
@@ -1770,7 +1770,7 @@ export default function LevelUpApp() {
     animation: cyber-flow 3s ease infinite;
   }
 `}</style>
-      <Toast notifications={notifications} removeNotification={removeNotification} />
+            <Toast notifications={notifications} removeNotification={removeNotification} />
    
       <div className="absolute opacity-0 pointer-events-none w-0 h-0 overflow-hidden">
         <canvas ref={canvasRef} width={180} height={60} />
@@ -1810,7 +1810,7 @@ export default function LevelUpApp() {
               <button onClick={() => setShowSettings(!showSettings)} className="text-gray-500 hover:text-white transition p-1 hover:bg-gray-800 rounded-full"><Settings className="w-5 h-5" /></button>
             </div>
 
-          {/* --- PC 端 AI 导师按钮 (赛博朋克·终极形态) --- */}
+        {/* --- PC 端 AI 导师按钮 (赛博朋克·终极形态) --- */}
             <button 
               onClick={startAICoach} 
               className={`
