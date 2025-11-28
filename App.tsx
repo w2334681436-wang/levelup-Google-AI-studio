@@ -676,9 +676,9 @@ export default function LevelUpApp() {
   
   // 核心状态
   const [mode, setMode] = useState('focus'); 
-  const [timeLeft, setTimeLeft] = useState(5);
+  const [timeLeft, setTimeLeft] = useState(45 *60);
   const [isActive, setIsActive] = useState(false);
-  const [initialTime, setInitialTime] = useState(5);
+  const [initialTime, setInitialTime] = useState(45 * 60);
   const [lastActiveTime, setLastActiveTime] = useState(null); 
   const [stage, setStage] = useState(getStageInfo());
   const [isZen, setIsZen] = useState(false);
