@@ -678,7 +678,7 @@ export default function LevelUpApp() {
   const [mode, setMode] = useState('focus'); 
   const [timeLeft, setTimeLeft] = useState(5);
   const [isActive, setIsActive] = useState(false);
-  const [initialTime, setInitialTime] = useState(45 * 60);
+  const [initialTime, setInitialTime] = useState(5);
   const [lastActiveTime, setLastActiveTime] = useState(null); 
   const [stage, setStage] = useState(getStageInfo());
   const [isZen, setIsZen] = useState(false);
