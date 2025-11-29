@@ -1696,24 +1696,7 @@ if (storedTimerState.isActive && storedTimerState.timestamp) {
     }
   };
 
-  // --- 补全：清空历史记录逻辑 ---
-  const handleClearHistory = () => {
-    setConfirmState({
-      isOpen: true,
-      title: "⚠️ 危险操作：清空历史",
-      message: "确定要删除所有历史学习记录吗？\n\n1. 你的【等级】将可能大幅下降（仅保留今日经验）\n2. 你的【累计时长】将清零\n3. 你的【学习进度】描述会保留（不会被删除）\n\n此操作不可撤销！",
-      onConfirm: () => {
-        setHistory([]); // 清空状态
-        localStorage.removeItem('levelup_history'); // 清空本地存储
-        
-        // 重新计算并保存（仅保留今日数据）
-        addNotification("历史记录已清空，等级已重新计算", "success");
-        closeConfirm();
-      },
-      isDangerous: true,
-      confirmText: "确认清空"
-    });
-  };
+
 
   const handleExportData = () => {
     try {
