@@ -1660,23 +1660,36 @@ if (storedTimerState.isActive && storedTimerState.timestamp) {
   
   const cancelStopTimer = () => setShowStopModal(false);
 
-  // --- 新增：调用 AI 融合学习进度 ---
+ // --- 修改：调用 AI 融合学习进度 (多线程分支版) ---
   const mergeProgressWithAI = async (subjectName, oldContent, newLog) => {
     // 如果没有 API Key，降级为追加模式
-    if (!apiKey) return oldContent ? `${oldContent}\n---\n[${getTodayDateString()}] ${newLog}` : newLog;
+    if (!apiKey) return oldContent ? `${oldContent}\n[${getTodayDateString()}] ${newLog}` : newLog;
 
     try {
       const prompt = `
-        角色：你是一个严谨的学习进度管理员。
-        任务：将【旧进度】和【新增投入】合并，生成一句最新的、简洁的当前进度描述。
-        规则：
-        1. 只要结果。不要解释，不要前缀。
-        2. 如果【新增投入】推进了进度（如从第3章到第4章），则更新为新进度。
-        3. 如果【新增投入】是复习或做题，请在原进度后补充说明（如"已学完第3章，正在进行习题巩固"）。
-        4. 保持极简，不超过 80 字。
+        你是一个精细化的考研学习进度管理员。
+        任务：根据【旧进度】和【新增打卡】，输出最新的进度状态。
+        
+        核心规则：**多任务并行追踪**。
+        该科目（${subjectName}）可能包含多个并行的子任务（例如：不同的教材、习题集，或408的不同科目）。
+        
+        【旧进度】：
+        ${oldContent || "无"}
 
-        【旧进度】：${oldContent || "无"}
-        【新增投入】：${newLog}
+        【新增打卡】：
+        ${newLog}
+
+        处理逻辑：
+        1. **识别分支**：分析【新增打卡】属于哪个具体子分支（例如：是“计算机网络”还是“操作系统”？是“660题”还是“复习全书”？）。
+        2. **精准更新**：仅更新该特定子分支的进度描述，使其反映最新状态。
+        3. **严格保留**：**绝对不要删除**或**不要概括**其他未涉及的子分支进度，必须原样保留。
+        4. **格式化**：将不同分支的进度用清晰的标点（如 " | " 或换行）分隔，保持条理。
+
+        示例演示：
+        输入旧进度：数据结构[结束]; 计组[第三章]; 操作系统[第一章]
+        输入新打卡：操作系统看完了第二章
+        正确输出：数据结构[结束]; 计组[第三章]; 操作系统[已完结第二章]
+        (注意：数据结构和计组被完美保留)
       `;
 
       const cleanBaseUrl = apiBaseUrl.replace(/\/$/, '');
@@ -1686,18 +1699,25 @@ if (storedTimerState.isActive && storedTimerState.timestamp) {
         body: JSON.stringify({
           model: apiModel,
           messages: [{ role: "user", content: prompt }],
-          stream: false // 这里不需要流式，直接要结果
+          temperature: 0.3, // 降低随机性，提高逻辑准确度
+          stream: false 
         })
       });
       const data = await response.json();
-      const mergedText = data.choices?.[0]?.message?.content?.trim();
-      return mergedText || oldContent; // 如果失败返回旧的
+      
+      // 处理 DeepSeek R1 可能存在的 <think> 标签，只取最后的结果
+      let mergedText = data.choices?.[0]?.message?.content?.trim();
+      if (mergedText) {
+          // 如果模型输出了 thinking 过程，尝试去除（虽然 UI 会隐藏，但为了数据整洁最好去掉）
+          mergedText = mergedText.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+      }
+
+      return mergedText || oldContent; 
     } catch (e) {
       console.error("AI Merge Failed", e);
-      return oldContent ? `${oldContent}\n---\n[${getTodayDateString()}] ${newLog}` : newLog;
+      return oldContent ? `${oldContent}\n[${getTodayDateString()}] ${newLog}` : newLog;
     }
   };
-
 
 
   const handleExportData = () => {
