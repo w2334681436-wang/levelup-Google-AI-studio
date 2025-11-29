@@ -354,133 +354,148 @@ const LearningProgressPanel = ({ learningProgress, onProgressUpdate, isMobileVie
 
 // 历史记录查看组件
 const HistoryView = ({ history, isOpen, onClose }) => {
-  const [selectedDate, setSelectedDate] = useState(getTodayDateString());
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const [selectedDate, setSelectedDate] = useState(getTodayDateString());
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
-  if (!isOpen) return null;
+  if (!isOpen) return null;
 
-  const selectedDateData = history.find((d) => d.date === selectedDate);
-  const availableDates = history.map((d) => d.date).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
-  
-  const totalPages = Math.ceil(availableDates.length / itemsPerPage);
-  const paginatedDates = availableDates.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  // --- 新增：时间格式化工具 ---
+  const formatDurationCN = (minutes) => {
+    if (!minutes) return "0分钟";
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    if (h > 0 && m > 0) return `${h}小时 ${m}分钟`;
+    if (h > 0) return `${h}小时`;
+    return `${m}分钟`;
+  };
 
-  return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-0 md:p-4 animate-in fade-in duration-200">
-      <div className="bg-[#111116] w-full h-full md:max-w-4xl md:h-[85vh] md:rounded-3xl shadow-2xl flex flex-col relative overflow-hidden border-0 md:border border-gray-800">
-        <div className="p-4 md:p-6 border-b border-gray-800 flex justify-between items-center bg-[#111116] z-10">
-          <div>
-            <h2 className="text-lg md:text-2xl font-bold text-white flex items-center gap-2">
-              <Calendar className="w-5 h-5 md:w-6 md:h-6 text-cyan-400" />
-              历史学习记录
-            </h2>
-            <p className="text-gray-400 text-xs md:text-sm mt-1">查看往日的学习成果和进度</p>
-          </div>
-          <button onClick={onClose} className="text-gray-500 hover:text-white p-2 rounded-full hover:bg-gray-800 transition">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+  const selectedDateData = history.find((d) => d.date === selectedDate);
+  const availableDates = history.map((d) => d.date).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+  
+  const totalPages = Math.ceil(availableDates.length / itemsPerPage);
+  const paginatedDates = availableDates.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
-        <div className="flex flex-1 overflow-hidden flex-col md:flex-row">
-          {/* 日期列表 - Mobile: Top Scrollable, Desktop: Left Sidebar */}
-          <div className="w-full md:w-1/3 border-b md:border-b-0 md:border-r border-gray-800 flex flex-row md:flex-col h-auto md:h-full">
-            <div className="hidden md:block p-4 border-b border-gray-800">
-              <h3 className="font-bold text-gray-400 text-sm mb-2">选择日期</h3>
-              <div className="flex gap-2 mb-4">
-                <button 
-                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                  disabled={currentPage === 1}
-                  className="flex-1 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-gray-300 py-2 rounded text-sm"
-                >
-                  上一页
-                </button>
-                <button 
-                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                  disabled={currentPage === totalPages}
-                  className="flex-1 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-gray-300 py-2 rounded text-sm"
-                >
-                  下一页
-                </button>
-              </div>
-              <div className="text-xs text-gray-500 text-center">
-                第 {currentPage} 页，共 {totalPages} 页
-              </div>
-            </div>
-            
-            <div className="flex-1 overflow-x-auto md:overflow-x-hidden md:overflow-y-auto flex md:block scrollbar-hide">
-              {paginatedDates.map((date) => (
-                <button
-                  key={date}
-                  onClick={() => setSelectedDate(date)}
-                  className={`flex-shrink-0 md:w-full text-left p-3 border-r md:border-r-0 md:border-b border-gray-800 hover:bg-gray-800/50 transition whitespace-nowrap md:whitespace-normal ${
-                    selectedDate === date ? 'bg-cyan-900/30 border-cyan-500/50' : ''
-                  }`}
-                >
-                  <div className="font-medium text-white text-sm md:text-base">{date}</div>
-                  <div className="text-xs text-gray-400 mt-1">
-                    {history.find((d) => d.date === date)?.studyMinutes || 0} 分钟学习
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
+  return (
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-0 md:p-4 animate-in fade-in duration-200">
+      <div className="bg-[#111116] w-full h-full md:max-w-4xl md:h-[85vh] md:rounded-3xl shadow-2xl flex flex-col relative overflow-hidden border-0 md:border border-gray-800">
+        <div className="p-4 md:p-6 border-b border-gray-800 flex justify-between items-center bg-[#111116] z-10">
+          <div>
+            <h2 className="text-lg md:text-2xl font-bold text-white flex items-center gap-2">
+              <Calendar className="w-5 h-5 md:w-6 md:h-6 text-cyan-400" />
+              历史学习记录
+            </h2>
+            <p className="text-gray-400 text-xs md:text-sm mt-1">查看往日的学习成果和进度</p>
+          </div>
+          <button onClick={onClose} className="text-gray-500 hover:text-white p-2 rounded-full hover:bg-gray-800 transition">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
 
-          {/* 详情面板 */}
-          <div className="flex-1 p-4 md:p-6 overflow-y-auto">
-            {selectedDateData ? (
-              <div>
-                <h3 className="text-lg md:text-xl font-bold text-white mb-4 flex items-center gap-2 flex-wrap">
-                  {selectedDate}
-                  <span className="text-xs md:text-sm font-normal bg-emerald-900/30 text-emerald-400 px-2 py-1 rounded">
-                    {selectedDateData.studyMinutes} 分钟学习
-                  </span>
-                </h3>
+        <div className="flex flex-1 overflow-hidden flex-col md:flex-row">
+          {/* 日期列表 - Mobile: Top Scrollable, Desktop: Left Sidebar */}
+          <div className="w-full md:w-1/3 border-b md:border-b-0 md:border-r border-gray-800 flex flex-row md:flex-col h-auto md:h-full">
+            <div className="hidden md:block p-4 border-b border-gray-800">
+              <h3 className="font-bold text-gray-400 text-sm mb-2">选择日期</h3>
+              <div className="flex gap-2 mb-4">
+                <button 
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  className="flex-1 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-gray-300 py-2 rounded text-sm"
+                >
+                  上一页
+                </button>
+                <button 
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                  className="flex-1 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-gray-300 py-2 rounded text-sm"
+                >
+                  下一页
+                </button>
+              </div>
+              <div className="text-xs text-gray-500 text-center">
+                第 {currentPage} 页，共 {totalPages} 页
+              </div>
+            </div>
+            
+            <div className="flex-1 overflow-x-auto md:overflow-x-hidden md:overflow-y-auto flex md:block scrollbar-hide">
+              {paginatedDates.map((date) => {
+                const dayMinutes = history.find((d) => d.date === date)?.studyMinutes || 0;
+                return (
+                  <button
+                    key={date}
+                    onClick={() => setSelectedDate(date)}
+                    className={`flex-shrink-0 md:w-full text-left p-3 border-r md:border-r-0 md:border-b border-gray-800 hover:bg-gray-800/50 transition whitespace-nowrap md:whitespace-normal ${
+                      selectedDate === date ? 'bg-cyan-900/30 border-cyan-500/50' : ''
+                    }`}
+                  >
+                    <div className="font-medium text-white text-sm md:text-base">{date}</div>
+                    {/* 修改点：列表里的时间更显眼 */}
+                    <div className={`text-xs mt-1 font-mono font-bold ${dayMinutes > 0 ? 'text-emerald-400' : 'text-gray-500'}`}>
+                      {formatDurationCN(dayMinutes)}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
-                <div className="grid grid-cols-2 gap-3 md:gap-4 mb-6">
-                  <div className="bg-gray-900/50 p-3 md:p-4 rounded-lg border border-gray-800">
-                    <div className="text-gray-400 text-xs md:text-sm">游戏券余额</div>
-                    <div className="text-purple-400 font-bold text-base md:text-lg">{selectedDateData.gameBank}m</div>
-                  </div>
-                  <div className="bg-gray-900/50 p-3 md:p-4 rounded-lg border border-gray-800">
-                    <div className="text-gray-400 text-xs md:text-sm">游戏时间使用</div>
-                    <div className="text-blue-400 font-bold text-base md:text-lg">{selectedDateData.gameUsed}m</div>
-                  </div>
-                </div>
+          {/* 详情面板 */}
+          <div className="flex-1 p-4 md:p-6 overflow-y-auto">
+            {selectedDateData ? (
+              <div>
+                <h3 className="text-lg md:text-xl font-bold text-white mb-4 flex items-center gap-3 flex-wrap">
+                  {selectedDate}
+                  {/* 修改点：详情页的时间变成显眼的徽章 */}
+                  <span className="text-sm md:text-base font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 px-3 py-1.5 rounded-lg shadow-[0_0_10px_rgba(16,185,129,0.2)]">
+                    ⏱️ {formatDurationCN(selectedDateData.studyMinutes)}
+                  </span>
+                </h3>
 
-                <h4 className="font-bold text-gray-400 mb-3 text-sm md:text-base">学习记录</h4>
-                <div className="space-y-3 pb-16 md:pb-0">
-                  {selectedDateData.logs && selectedDateData.logs.length > 0 ? (
-                    selectedDateData.logs.map((log, index) => (
-                      <div key={index} className="bg-[#1a1a20] p-3 md:p-4 rounded-lg border-l-2 border-emerald-500/50">
-                        <div className="flex justify-between text-gray-500 text-xs md:text-sm mb-2">
-                          <span className="font-mono text-emerald-600">{log.time}</span>
-                          <span className="text-emerald-500/80">+{log.duration}m</span>
-                        </div>
-                        <div className="text-gray-300 text-sm md:text-base">{log.content}</div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center text-gray-500 py-8">
-                      该日期没有学习记录
-                    </div>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className="text-center text-gray-500 py-16">
-                <Calendar className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <div>选择日期查看详细记录</div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+                <div className="grid grid-cols-2 gap-3 md:gap-4 mb-6">
+                  <div className="bg-gray-900/50 p-3 md:p-4 rounded-lg border border-gray-800">
+                    <div className="text-gray-400 text-xs md:text-sm">游戏券余额</div>
+                    <div className="text-purple-400 font-bold text-base md:text-lg">{selectedDateData.gameBank}m</div>
+                  </div>
+                  <div className="bg-gray-900/50 p-3 md:p-4 rounded-lg border border-gray-800">
+                    <div className="text-gray-400 text-xs md:text-sm">游戏时间使用</div>
+                    <div className="text-blue-400 font-bold text-base md:text-lg">{selectedDateData.gameUsed}m</div>
+                  </div>
+                </div>
+
+                <h4 className="font-bold text-gray-400 mb-3 text-sm md:text-base">学习记录</h4>
+                <div className="space-y-3 pb-16 md:pb-0">
+                  {selectedDateData.logs && selectedDateData.logs.length > 0 ? (
+                    selectedDateData.logs.map((log, index) => (
+                      <div key={index} className="bg-[#1a1a20] p-3 md:p-4 rounded-lg border-l-2 border-emerald-500/50">
+                        <div className="flex justify-between text-gray-500 text-xs md:text-sm mb-2">
+                          <span className="font-mono text-emerald-600">{log.time}</span>
+                          <span className="text-emerald-500/80">+{log.duration}m</span>
+                        </div>
+                        <div className="text-gray-300 text-sm md:text-base">{log.content}</div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center text-gray-500 py-8">
+                      该日期没有学习记录
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center text-gray-500 py-16">
+                <Calendar className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <div>选择日期查看详细记录</div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 // 移动端底部导航组件
