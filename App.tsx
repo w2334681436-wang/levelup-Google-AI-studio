@@ -682,6 +682,128 @@ const GoldParticles = () => {
 
 return <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none z-0" />;};
 
+// --- 新增：加时模式专属-涡轮喷射光效 ---
+const OvertimeTurbineEffect = () => {
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    let animationFrameId;
+    let particles = [];
+
+    const resize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    window.addEventListener('resize', resize);
+    resize();
+
+    // 判断设备确定圆环半径 (对应 CSS: w-64/h-64 (mobile) -> w-80/h-80 (desktop))
+    // w-64 = 16rem = 256px -> r ≈ 128px
+    // w-80 = 20rem = 320px -> r ≈ 160px
+    const getRingRadius = () => window.innerWidth < 768 ? 120 : 150;
+
+    class TurboParticle {
+      constructor() {
+        this.reset(true);
+      }
+
+      reset(initial = false) {
+        const radius = getRingRadius();
+        const angle = Math.random() * Math.PI * 2;
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+
+        // 粒子出生在圆环边缘
+        this.x = centerX + Math.cos(angle) * radius;
+        this.y = centerY + Math.sin(angle) * radius;
+        
+        // 速度计算：径向向外 + 切向旋转 (形成涡轮感)
+        const speed = 2 + Math.random() * 4;
+        const tangentSpeed = 1; // 旋转力度
+        
+        this.vx = Math.cos(angle) * speed - Math.sin(angle) * tangentSpeed;
+        this.vy = Math.sin(angle) * speed + Math.cos(angle) * tangentSpeed;
+
+        this.life = 1.0;
+        this.decay = 0.01 + Math.random() * 0.02;
+        this.size = 2 + Math.random() * 3;
+        // 颜色：核心白 -> 外围金 -> 边缘红
+        this.colorType = Math.random(); 
+      }
+
+      update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.life -= this.decay;
+        this.size *= 0.95; // 变小
+
+        if (this.life <= 0 || this.size < 0.5) {
+          this.reset();
+        }
+      }
+
+      draw() {
+        ctx.beginPath();
+        // 拖尾效果通过不完全清除画布实现，这里画粒子本体
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        
+        // 动态颜色
+        const alpha = this.life;
+        if (this.colorType > 0.9) {
+            ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`; // 爆闪白
+        } else if (this.colorType > 0.5) {
+            ctx.fillStyle = `rgba(251, 191, 36, ${alpha})`; // 黄金
+        } else {
+            ctx.fillStyle = `rgba(245, 158, 11, ${alpha * 0.8})`; // 深橙
+        }
+        
+        ctx.fill();
+      }
+    }
+
+    // 粒子数量
+    const particleCount = 150;
+    for (let i = 0; i < particleCount; i++) {
+      particles.push(new TurboParticle());
+    }
+
+    const animate = () => {
+      // 关键：拖尾效果！不使用 clearRect，而是覆盖一层带透明度的黑
+      // 这会让上一帧的粒子留下残影，形成速度感
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // 开启辉光叠加模式
+      ctx.globalCompositeOperation = 'lighter'; 
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = '#fbbf24'; // 金色辉光
+
+      particles.forEach(p => {
+        p.update();
+        p.draw();
+      });
+      
+      // 恢复正常混合模式
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.shadowBlur = 0;
+
+      animationFrameId = requestAnimationFrame(animate);
+    };
+
+    animate();
+
+    return () => {
+      window.removeEventListener('resize', resize);
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, []);
+
+  return <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none z-0 scale-100" />;
+};
+
 // --- 5. 主组件 ---
 export default function LevelUpApp() {
   // 1. 先定义所有的 State (必须放在最前面！)
@@ -2310,8 +2432,7 @@ if (storedTimerState.isActive && storedTimerState.timestamp) {
 
 {mode === 'overtime' && (
            <div className="absolute inset-0 z-0 pointer-events-none">
-               <GoldParticles />
-               {/* 加一层径向光晕，让粒子更明显 */}
+              <OvertimeTurbineEffect />
                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_20%,#000_100%)] opacity-60"></div>
            </div>
         )}
@@ -2401,10 +2522,30 @@ if (storedTimerState.isActive && storedTimerState.timestamp) {
 
         <div className={`${activeView === 'timer' ? 'flex' : 'hidden md:flex'} flex-col items-center w-full`}>
           <div className={`absolute top-4 right-4 z-30 transition-opacity duration-300 flex items-center gap-4 ${isZen && isActive ? 'opacity-0 hover:opacity-100' : 'opacity-100'}`}>
-            {isZen && <button onClick={() => setIsZen(false)} className="bg-gray-800/50 hover:bg-gray-700 text-gray-400 hover:text-white px-3 py-2 rounded text-xs transition">
-                  退出禅模式
-                </button>
-            }
+           {isZen ? (
+    <button 
+      onClick={() => setIsZen(false)} 
+      className="bg-gray-800/80 hover:bg-gray-700 text-gray-400 hover:text-white px-3 py-2 rounded-lg text-xs transition backdrop-blur-md border border-gray-700 font-bold flex items-center gap-2"
+    >
+      <Minimize2 className="w-4 h-4" /> 退出禅模式
+    </button>
+  ) : (
+    <button 
+      onClick={() => setIsZen(true)} 
+      className={`
+        px-3 py-2 rounded-lg text-xs transition backdrop-blur-md border font-bold flex items-center gap-2 shadow-lg
+        ${mode === 'overtime' 
+          ? 'bg-amber-500/20 hover:bg-amber-500/40 text-amber-400 border-amber-500/50 animate-pulse' 
+          : 'bg-gray-800/80 hover:bg-gray-700 text-gray-300 hover:text-white border-gray-700'
+        }
+      `}
+      title="进入沉浸模式"
+    >
+      <Maximize2 className="w-4 h-4" /> 
+      {/* 在加时模式下文字更有激情一点 */}
+      {mode === 'overtime' ? '极·专注' : '禅模式'}
+    </button>
+  )}
 
             <button 
               onClick={togglePiP}
