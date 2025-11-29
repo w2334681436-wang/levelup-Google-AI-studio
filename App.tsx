@@ -1481,33 +1481,36 @@ if (storedTimerState.isActive && storedTimerState.timestamp) {
     }
   };
 
- const handleTimerComplete = () => {
-    // --- 新增：发送通知 ---
-    const title = mode === 'focus' ? "🎉 专注完成！" : "💪 休息结束！";
-    const body = mode === 'focus' ? "真棒！去领奖励吧！" : "该回到学习状态了！";
-    sendNotification(title, body);
-    // -------------------
+// --- 修改：计时结束逻辑 (休息结束也触发弹窗) ---
+  const handleTimerComplete = () => {
+    // 发送系统通知
+    const title = mode === 'focus' ? "🎉 专注完成！" : "💪 休息结束！";
+    const body = mode === 'focus' ? "真棒！去领奖励吧！" : "该回到学习状态了！";
+    sendNotification(title, body);
 
-    setIsActive(false); 
-    setIsZen(false);
-    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
-    clearInterval(timerRef.current);
-    
-    localStorage.removeItem('levelup_timer_state');
-    
-    if (mode === 'focus') {
-      setPendingStudyTime(initialTime); 
-      setIsManualLog(false); 
-      setShowLogModal(true);
-    } else if (mode === 'gaming') {
-      updateGameStats(initialTime); 
-      addNotification("⚠️ 游戏时间耗尽！该回去学习了！", "error");
-      switchMode('focus');
-    } else { 
-      addNotification("🔔 休息结束！开始专注吧。", "info");
-      switchMode('focus');
-    }
-  };
+    setIsActive(false); 
+    setIsZen(false);
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    clearInterval(timerRef.current);
+    
+    localStorage.removeItem('levelup_timer_state');
+    
+    // 核心修改：无论什么模式结束，都播放铃声并弹窗，而不是自动跳转
+    if (mode === 'focus') {
+      setPendingStudyTime(initialTime); 
+      setIsManualLog(false); 
+      setShowLogModal(true); // 专注结束先去填日志，填完会自动触发询问是否休息
+      // 注意：专注结束不直接弹 TimeUpModal，而是先 LogModal，这是你原本的逻辑
+      // 如果你想专注结束也弹那个 "Excellent" 弹窗，可以在 saveLog 后触发
+      // 但为了保持你原本的“专注->填日志->休息”流，这里保持不变
+    } else {
+      // >>> 休息或游戏结束 <<<
+      if (mode === 'gaming') updateGameStats(initialTime);
+      
+      playAlarm(); // 1. 播放铃声 (同款)
+      setShowTimeUpModal(true); // 2. 弹出全屏提醒 (同款)
+    }
+  };
 
   const toggleFullScreen = async () => {
     if (!appContainerRef.current) return;
@@ -2633,32 +2636,60 @@ if (storedTimerState.isActive && storedTimerState.timestamp) {
         </div>
       )}
 
-            {/* --- 新增：专注结束询问弹窗 --- */}
+{/* --- 修改：通用时间到弹窗 (支持专注完成/休息结束) --- */}
       {showTimeUpModal && (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[100] flex items-center justify-center p-4 animate-in fade-in zoom-in duration-300">
-          <div className="bg-gray-900 border-2 border-amber-500/50 rounded-3xl p-8 max-w-sm w-full shadow-[0_0_100px_rgba(245,158,11,0.3)] relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-tr from-amber-500/10 via-transparent to-emerald-500/10 animate-pulse"></div>
+          <div className={`bg-gray-900 border-2 ${mode === 'focus' ? 'border-amber-500/50' : 'border-cyan-500/50'} rounded-3xl p-8 max-w-sm w-full shadow-[0_0_100px_rgba(0,0,0,0.5)] relative overflow-hidden`}>
+            
+            {/* 动态背景光效 */}
+            <div className={`absolute inset-0 bg-gradient-to-tr ${mode === 'focus' ? 'from-amber-500/10 via-transparent to-emerald-500/10' : 'from-cyan-500/10 via-transparent to-blue-500/10'} animate-pulse`}></div>
+            
             <div className="relative z-10 text-center">
-              <div className="w-20 h-20 mx-auto bg-gradient-to-br from-emerald-400 to-cyan-500 rounded-full flex items-center justify-center mb-6 shadow-xl animate-bounce">
-                <CheckCircle2 className="w-10 h-10 text-white" />
+              <div className={`w-20 h-20 mx-auto bg-gradient-to-br ${mode === 'focus' ? 'from-emerald-400 to-cyan-500' : 'from-blue-400 to-purple-500'} rounded-full flex items-center justify-center mb-6 shadow-xl animate-bounce`}>
+                {mode === 'focus' ? <CheckCircle2 className="w-10 h-10 text-white" /> : <Zap className="w-10 h-10 text-white" />}
               </div>
-              <h3 className="text-2xl font-black text-white mb-2 italic">EXCELLENT!</h3>
-              <p className="text-gray-300 mb-8">专注目标已达成。此刻状态如何？</p>
+              
+              <h3 className="text-2xl font-black text-white mb-2 italic">
+                {mode === 'focus' ? 'EXCELLENT!' : 'TIME TO WORK!'}
+              </h3>
+              
+              <p className="text-gray-300 mb-8">
+                {mode === 'focus' ? '专注目标已达成。此刻状态如何？' : '休息时间结束，请立即回到学习状态！'}
+              </p>
+              
               <div className="flex flex-col gap-3">
-                <button 
-                  onClick={startOvertime}
-                  className="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white font-bold py-4 rounded-xl transition-all transform hover:scale-105 shadow-[0_0_20px_rgba(245,158,11,0.4)] flex items-center justify-center gap-2 group"
-                >
-                  <Zap className="w-5 h-5 fill-current group-hover:animate-ping" />
-                  <span>状态正佳，进入加时！</span>
-                </button>
-                <button 
-                  onClick={finishAndRest}
-                  className="w-full bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold py-4 rounded-xl transition-all border border-gray-700 flex items-center justify-center gap-2"
-                >
-                  <Coffee className="w-5 h-5" />
-                  <span>存入记录并休息</span>
-                </button>
+                {mode === 'focus' ? (
+                  // --- 专注结束的按钮 ---
+                  <>
+                    <button 
+                      onClick={startOvertime}
+                      className="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white font-bold py-4 rounded-xl transition-all transform hover:scale-105 shadow-[0_0_20px_rgba(245,158,11,0.4)] flex items-center justify-center gap-2 group"
+                    >
+                      <Zap className="w-5 h-5 fill-current group-hover:animate-ping" />
+                      <span>状态正佳，进入加时！</span>
+                    </button>
+                    <button 
+                      onClick={finishAndRest}
+                      className="w-full bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold py-4 rounded-xl transition-all border border-gray-700 flex items-center justify-center gap-2"
+                    >
+                      <Coffee className="w-5 h-5" />
+                      <span>存入记录并休息</span>
+                    </button>
+                  </>
+                ) : (
+                  // --- 休息结束的按钮 ---
+                  <button 
+                    onClick={() => {
+                      stopAlarm();
+                      setShowTimeUpModal(false);
+                      switchMode('focus');
+                    }}
+                    className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold py-4 rounded-xl transition-all transform hover:scale-105 shadow-[0_0_20px_rgba(6,182,212,0.4)] flex items-center justify-center gap-2"
+                  >
+                    <BookOpen className="w-5 h-5" />
+                    <span>立即开始专注</span>
+                  </button>
+                )}
               </div>
             </div>
           </div>
