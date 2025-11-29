@@ -1527,34 +1527,62 @@ if (storedTimerState.isActive && storedTimerState.timestamp) {
       } catch (err) { console.log("Exit Fullscr err", err); }
     }
   };
-// --- 新增：生成禅模式激励语录 ---
-  const fetchZenQuote = async () => {
-    if (!apiKey) return; // 如果没有 API Key 就不生成
-    
-    // 如果有个人背景，也发给 AI，让它生成的句子更贴切
-    const backgroundPrompt = customUserBackground ? `用户背景：${customUserBackground}。` : "";
-    
-    try {
-      const cleanBaseUrl = apiBaseUrl.replace(/\/$/, '');
-      const response = await fetch(`${cleanBaseUrl}/chat/completions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-        body: JSON.stringify({
-          model: apiModel,
-          messages: [{ 
-            role: "user", 
-            content: `${backgroundPrompt}请生成一句非常简短、震撼人心、能激励考研学生坚持下去的励志语录（名人名言或高级心灵鸡汤）。要求：中文，30字以内，不要带引号，不要解释，直接给句子。` 
-          }],
-          stream: false // 这里不需要流式传输，直接要结果
-        })
-      });
-      const data = await response.json();
-      const quote = data.choices?.[0]?.message?.content?.trim();
-      if (quote) setZenQuote(quote);
-    } catch (e) {
-      console.error("Quote fetch failed", e);
-    }
-  };
+
+// --- 修改：生成禅模式激励语录 (防解析、防思考标签版) ---
+  const fetchZenQuote = async () => {
+    if (!apiKey) return; // 如果没有 API Key 就不生成
+    
+    // 如果有个人背景，也发给 AI，让它生成的句子更贴切
+    const backgroundPrompt = customUserBackground ? `用户背景：${customUserBackground}。` : "";
+    
+    try {
+      const cleanBaseUrl = apiBaseUrl.replace(/\/$/, '');
+      const response = await fetch(`${cleanBaseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model: apiModel,
+          messages: [{ 
+            role: "user", 
+            content: `${backgroundPrompt}请生成一句非常简短、震撼人心、能激励考研学生坚持下去的励志语录（名人名言或高级心灵鸡汤）。
+            严一格要求：
+            1. 中文，30字以内。
+            2. **绝对不要**包含“解析”、“出处”、“含义”、“注：”等解释性文字。
+            3. **绝对不要**带引号、书名号或Markdown格式。
+            4. 直接输出这一句纯文本。` 
+          }],
+          stream: false // 这里不需要流式传输，直接要结果
+        })
+      });
+      const data = await response.json();
+      
+      let quote = data.choices?.[0]?.message?.content?.trim();
+      
+      if (quote) {
+        // --- 核心修复逻辑：清洗脏数据 ---
+        
+        // 1. 去除 DeepSeek R1 等模型的 <think>...</think> 思考过程
+        quote = quote.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+
+        // 2. 暴力截断：如果AI还是输出了 "解析："、"出处：" 等，直接砍掉后面的内容
+        // 匹配：解析、分析、出处、含义、---分隔符
+        const dirtyKeywords = ["解析", "分析", "出处", "含义", "---", "###", "Note:"];
+        dirtyKeywords.forEach(kw => {
+            if (quote.includes(kw)) {
+                quote = quote.split(kw)[0].trim();
+            }
+        });
+
+        // 3. 去除首尾可能残留的引号
+        quote = quote.replace(/^["'“「](.*)["'”」]$/, '$1');
+
+        setZenQuote(quote);
+      }
+    } catch (e) {
+      console.error("Quote fetch failed", e);
+    }
+  };
+  
   const toggleTimer = () => {
     if (mode === 'gaming' && todayStats.gameBank <= 0 && !isActive) {
       addNotification("余额不足，无法开始游戏！", "error");
