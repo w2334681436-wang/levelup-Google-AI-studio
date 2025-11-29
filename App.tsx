@@ -593,8 +593,8 @@ const MobileNav = ({ 
 };
 
 // --- 音效文件 (Base64) ---
-  const ALARM_SOUND = "data:audio/mp3;base64,SUQzBAAAAAAAI1RTSVAAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//OEAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAEAAABIwAXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcX//OEAAAAAAAAAAAAAAAAAAAAAAAAMWxhdmeAAAAAAAAAAAAAAAAAAAAAAAAdasAAEstAAAAAAAAAAEjAAAAAAAAAAA//uQZAAAAAAAABAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//uQZAACAAAAAkAAAAJA0AAAAAAAAAAkgAAAAAAAACSAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
-
+// 替换为真实的音效链接
+const ALARM_SOUND = "https://actions.google.com/sounds/v1/alarms/beep_short.ogg";
 // --- 顶级 UI：金色粒子特效组件 ---
 const GoldParticles = () => {
   const canvasRef = useRef(null);
@@ -680,8 +680,7 @@ const GoldParticles = () => {
     };
   }, []);
 
-  return <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none z-0 mix-blend-screen" />;
-};
+return <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none z-0" />;};
 
 // --- 5. 主组件 ---
 export default function LevelUpApp() {
@@ -754,9 +753,44 @@ export default function LevelUpApp() {
   const [notifications, setNotifications] = useState([]);
   const [confirmState, setConfirmState] = useState({ isOpen: false, title: '', message: '', onConfirm: () => {}, isDangerous: false, confirmText: '确定' });
   const [pendingImportData, setPendingImportData] = useState(null);
-        // --- 新增状态 ---
-  // 增加 'overtime' 模式
-  // mode 的定义变为: 'focus' | 'break' | 'gaming' | 'overtime'
+// --- 新增：自定义铃声状态 ---
+  // 默认铃声使用 Google 的短提示音，你也可以换成其他在线链接
+  const DEFAULT_ALARM = "https://actions.google.com/sounds/v1/alarms/beep_short.ogg";
+  const [customAlarmSound, setCustomAlarmSound] = useState(localStorage.getItem('custom_alarm_sound'));
+  const audioInputRef = useRef(null);
+
+  // 处理铃声上传
+  const handleAlarmUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // 限制大小 (比如 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      addNotification("音频文件过大，请上传 2MB 以内的文件", "error");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const base64Sound = ev.target.result;
+      setCustomAlarmSound(base64Sound);
+      localStorage.setItem('custom_alarm_sound', base64Sound);
+      addNotification("🔔 自定义铃声设置成功！", "success");
+      
+      // 试听一下
+      const testAudio = new Audio(base64Sound);
+      testAudio.volume = 0.5;
+      testAudio.play();
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // 恢复默认铃声
+  const resetAlarmSound = () => {
+    setCustomAlarmSound(null);
+    localStorage.removeItem('custom_alarm_sound');
+    addNotification("已恢复默认铃声", "info");
+  };
   
   
   // 2. 然后定义 Refs (普通 Refs)
@@ -811,32 +845,63 @@ export default function LevelUpApp() {
     }
   };
 
-  const autoUpdateProgress = (logContent, currentProgress) => {
-    const newProgress = JSON.parse(JSON.stringify(currentProgress)); 
-    const lowerLog = logContent.toLowerCase();
-    const date = getTodayDateString();
-    let updated = false;
+// --- 修改：智能自动更新进度 (Async) ---
+  const autoUpdateProgress = async (logContent, currentProgress) => {
+    const lowerLog = logContent.toLowerCase();
+    const date = getTodayDateString();
+    
+    // 遍历所有科目配置
+    for (const [key, config] of Object.entries(SUBJECT_CONFIG)) {
+      const isMatch = config.keyword.some((kw) => lowerLog.includes(kw.toLowerCase()));
+      
+      if (isMatch) {
+        const oldContent = currentProgress[key].content || "";
+        
+        // 1. 先发个通知告诉用户正在处理
+        addNotification(`🧠 AI 正在整合 ${config.name} 的学习进度...`, "info");
+        
+        // 2. 调用 AI 进行融合 (异步)
+        const mergedContent = await mergeProgressWithAI(config.name, oldContent, logContent);
+        
+        // 3. 更新状态
+        setLearningProgress(prev => {
+          const updated = {
+            ...prev,
+            [key]: {
+              content: mergedContent,
+              lastUpdate: date
+            }
+          };
+          saveLearningProgress(updated);
+          return updated;
+        });
+        
+        // 4. 完成通知
+        addNotification(`✅ ${config.name} 进度已智能更新！`, "success");
+      }
+    }
+  };
 
-    Object.entries(SUBJECT_CONFIG).forEach(([key, config]) => {
-      const isMatch = config.keyword.some((kw) => lowerLog.includes(kw.toLowerCase()));
-      if (isMatch) {
-        const existingContent = newProgress[key].content.trim();
-        const newEntry = `[${date} 打卡] ${logContent}`;
-        
-        if (!existingContent.includes(newEntry.substring(0, 50))) { 
-          const separator = existingContent ? "\n---\n" : "";
-          newProgress[key].content = (existingContent + separator + newEntry).substring(0, 5000); 
-          newProgress[key].lastUpdate = date;
-          updated = true;
-        }
-      }
-    });
-    
-    if (updated) {
-      saveLearningProgress(newProgress);
-    }
-    return updated;
-  };
+  // --- 新增：清空历史记录 ---
+  const handleClearHistory = () => {
+    setConfirmState({
+      isOpen: true,
+      title: "⚠️ 危险操作：清空历史",
+      message: "确定要删除所有历史学习记录吗？\n\n1. 你的【等级】将可能大幅下降（仅保留今日经验）\n2. 你的【累计时长】将清零\n3. 你的【学习进度】描述会保留（不会被删除）\n\n此操作不可撤销！",
+      onConfirm: () => {
+        setHistory([]); // 清空状态
+        localStorage.removeItem('levelup_history'); // 清空本地存储
+        
+        // 重新计算并保存（仅保留今日数据）
+        // 注意：我们不清除 todayStats，因为那是“今天”的努力
+        
+        addNotification("历史记录已清空，等级已重新计算", "success");
+        closeConfirm();
+      },
+      isDangerous: true,
+      confirmText: "确认清空"
+    });
+  };
 
   const saveTimerState = (active, left, initial, currentMode) => {
     const state = {
@@ -1302,18 +1367,20 @@ if (storedTimerState.isActive && storedTimerState.timestamp) {
     return () => document.removeEventListener("fullscreenchange", handleFsChange);
   }, []);
 
-  const updateStudyStats = (seconds, log) => {
-    const m = Math.floor(seconds / 60);
-    const g = Math.floor(m / 9); 
-    const newStats = { 
-      ...todayStats, 
-      studyMinutes: todayStats.studyMinutes + m, 
-      gameBank: todayStats.gameBank + g, 
-      logs: [...todayStats.logs, { time: new Date().toLocaleTimeString('zh-CN', {hour:'2-digit',minute:'2-digit'}), content: log, duration: m }] 
-    };
-    saveData(newStats);
-    autoUpdateProgress(log, learningProgress); 
-  };
+ const updateStudyStats = (seconds, log) => {
+    const m = Math.floor(seconds / 60);
+    const g = Math.floor(m / 9); 
+    const newStats = { 
+      ...todayStats, 
+      studyMinutes: todayStats.studyMinutes + m, 
+      gameBank: todayStats.gameBank + g, 
+      logs: [...todayStats.logs, { time: new Date().toLocaleTimeString('zh-CN', {hour:'2-digit',minute:'2-digit'}), content: log, duration: m }] 
+    };
+    saveData(newStats);
+    
+    // 调用智能更新 (不需要 await，让它在后台跑)
+    autoUpdateProgress(log, learningProgress); 
+  };
 
   const updateGameStats = (seconds) => {
     const m = Math.floor(seconds / 60);
@@ -1477,12 +1544,17 @@ if (storedTimerState.isActive && storedTimerState.timestamp) {
   const triggerStopTimer = () => setShowStopModal(true);
   
 
-  // --- 音效控制函数 ---
+// --- 修改：音效控制函数 (支持动态切换) ---
   const playAlarm = () => {
-    if (!audioRef.current) {
-      audioRef.current = new Audio(ALARM_SOUND);
+    const soundSrc = customAlarmSound || DEFAULT_ALARM;
+    
+    // 如果当前 audioRef 不存在，或者 src 不一样，就重新创建
+    if (!audioRef.current || audioRef.current.src !== soundSrc) {
+      if (audioRef.current) audioRef.current.pause(); // 停止旧的
+      audioRef.current = new Audio(soundSrc);
       audioRef.current.loop = true; // 循环播放
     }
+    
     audioRef.current.play().catch(e => console.log("Play error", e));
   };
 
@@ -1550,6 +1622,44 @@ if (storedTimerState.isActive && storedTimerState.timestamp) {
   };
   
   const cancelStopTimer = () => setShowStopModal(false);
+
+  // --- 新增：调用 AI 融合学习进度 ---
+  const mergeProgressWithAI = async (subjectName, oldContent, newLog) => {
+    // 如果没有 API Key，降级为追加模式
+    if (!apiKey) return oldContent ? `${oldContent}\n---\n[${getTodayDateString()}] ${newLog}` : newLog;
+
+    try {
+      const prompt = `
+        角色：你是一个严谨的学习进度管理员。
+        任务：将【旧进度】和【新增投入】合并，生成一句最新的、简洁的当前进度描述。
+        规则：
+        1. 只要结果。不要解释，不要前缀。
+        2. 如果【新增投入】推进了进度（如从第3章到第4章），则更新为新进度。
+        3. 如果【新增投入】是复习或做题，请在原进度后补充说明（如"已学完第3章，正在进行习题巩固"）。
+        4. 保持极简，不超过 80 字。
+
+        【旧进度】：${oldContent || "无"}
+        【新增投入】：${newLog}
+      `;
+
+      const cleanBaseUrl = apiBaseUrl.replace(/\/$/, '');
+      const response = await fetch(`${cleanBaseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model: apiModel,
+          messages: [{ role: "user", content: prompt }],
+          stream: false // 这里不需要流式，直接要结果
+        })
+      });
+      const data = await response.json();
+      const mergedText = data.choices?.[0]?.message?.content?.trim();
+      return mergedText || oldContent; // 如果失败返回旧的
+    } catch (e) {
+      console.error("AI Merge Failed", e);
+      return oldContent ? `${oldContent}\n---\n[${getTodayDateString()}] ${newLog}` : newLog;
+    }
+  };
 
   const handleExportData = () => {
     try {
@@ -2035,11 +2145,6 @@ if (storedTimerState.isActive && storedTimerState.timestamp) {
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(20,20,40,0.4),transparent_70%)] pointer-events-none"></div>
       <div className="absolute inset-0 opacity-5 pointer-events-none mix-blend-overlay" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")` }}></div>
 
-{mode === 'overtime' && (
-         <div className="absolute inset-0 animate-in fade-in duration-1000 z-0">
-             <GoldParticles />
-         </div>
-      )}
             
       {/* --- 左侧边栏 (动画优化：duration-500 + ease-out 更轻快) --- */}
       <div className={`hidden md:flex flex-col bg-[#111116] gap-4 z-20 h-full relative group scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${isZen ? 'w-0 min-w-0 p-0 opacity-0 border-none pointer-events-none overflow-hidden' : 'w-96 p-6 border-r border-gray-800 opacity-100 overflow-y-auto'}`}>
@@ -2165,7 +2270,15 @@ if (storedTimerState.isActive && storedTimerState.timestamp) {
       />
 
       <div className={`flex-1 flex flex-col items-center justify-center p-4 relative bg-gradient-to-br ${getBgColor()} transition-colors duration-1000 overflow-hidden pb-20 md:pb-4 min-h-[500px] md:min-h-0 overflow-y-auto md:overflow-y-hidden`}>
-        
+
+{mode === 'overtime' && (
+           <div className="absolute inset-0 z-0 pointer-events-none">
+               <GoldParticles />
+               {/* 加一层径向光晕，让粒子更明显 */}
+               <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_20%,#000_100%)] opacity-60"></div>
+           </div>
+        )}
+        
         <div className={`md:hidden w-full mb-4 ${activeView !== 'timer' ? 'hidden' : ''}`}>
           <div className="flex gap-2 bg-gray-900/80 backdrop-blur-md p-2 rounded-2xl border border-gray-700/50 shadow-2xl z-10">
             <button 
@@ -2859,7 +2972,35 @@ if (storedTimerState.isActive && storedTimerState.timestamp) {
                       </div>
                     </div>
                   </div>
-                  
+
+{/* --- 新增：个性化铃声设置 --- */}
+                  <div className="bg-amber-900/20 p-4 rounded-xl border border-amber-500/30">
+                    <h3 className="text-amber-400 font-bold mb-3 flex items-center gap-2 text-sm"><Bell className="w-4 h-4"/> 专注结束铃声</h3>
+                    <div className="flex items-center justify-between bg-black/30 p-3 rounded-lg border border-amber-500/20">
+                      <div className="text-xs text-gray-300 truncate max-w-[150px]">
+                        {customAlarmSound ? "🎵 当前：自定义铃声" : "🔔 当前：默认 (Ding)"}
+                      </div>
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={() => audioInputRef.current?.click()}
+                          className="text-xs bg-amber-600/20 hover:bg-amber-600/40 text-amber-400 border border-amber-600/50 px-3 py-1.5 rounded transition"
+                        >
+                          上传
+                        </button>
+                        {customAlarmSound && (
+                          <button 
+                            onClick={resetAlarmSound}
+                            className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-400 border border-gray-600 px-3 py-1.5 rounded transition"
+                          >
+                            重置
+                          </button>
+                        )}
+                      </div>
+                      <input type="file" ref={audioInputRef} onChange={handleAlarmUpload} accept="audio/*" className="hidden" />
+                    </div>
+                    <p className="text-[10px] text-gray-500 mt-2">* 建议上传 5秒以内 的 MP3/WAV 音效，文件过大会影响性能。</p>
+                  </div>
+                 
                   <div className="bg-red-900/20 p-4 rounded-xl border border-red-700/30">
                      <h3 className="text-red-400 font-bold mb-3 flex items-center gap-2 text-sm"><AlertTriangle className="w-4 h-4"/> 数据备份与恢复 (DATA BACKUP)</h3>
                      <div className="flex gap-2">
