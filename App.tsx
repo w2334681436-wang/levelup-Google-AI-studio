@@ -1330,34 +1330,39 @@ if (storedTimerState.isActive && storedTimerState.timestamp) {
     };
   }, [isActive, mode]);
 
-// --- 修改：智能后台检测 (声音+震动+通知) ---
+// --- 修改：智能后台检测 (仅在未开悬浮窗时报警) ---
   useEffect(() => {
     const handleVisibilityChange = async () => {
       // 当应用切到后台 且 计时正在进行时
       if (document.visibilityState === 'hidden' && isActive) {
         
-        // 1. 【声音警报】切后台瞬间响一声，提醒你"计时还在走"
+        // 关键判断：如果悬浮窗已经在运行，则视为安全，不打扰用户
+        if (document.pictureInPictureElement) {
+          console.log("悬浮窗运行中，保持静默...");
+          return; 
+        }
+
+        // --- 以下是未开悬浮窗的“高风险”状态，执行报警 ---
+
+        // 1. 【声音警报】
         if (audioRef.current) {
-          audioRef.current.volume = 1.0; // 确保最大音量
-          // 播放 1 秒后自动停止，作为简短提示
+          audioRef.current.volume = 1.0; 
           audioRef.current.play().catch(() => {}); 
           setTimeout(() => audioRef.current.pause(), 1000); 
         }
 
-        // 2. 【物理震动】(仅安卓支持)
+        // 2. 【物理震动】
         if ('vibrate' in navigator) {
-          navigator.vibrate([200, 100, 200]); // 震动两下
+          navigator.vibrate([200, 100, 200]); 
         }
 
-        // 3. 【尝试 PiP】(浏览器通常会拦截，但也试一下)
-        if (!document.pictureInPictureElement) {
-          try { await togglePiP(); } catch (e) {}
-        }
+        // 3. 【尝试挽救】(尽人事听天命，尝试自动开一下)
+        try { await togglePiP(); } catch (e) {}
 
         // 4. 【系统通知】
         sendNotification(
           "⚠️ 警告：Level Up! 正在后台运行", 
-          "为了防止手机系统杀后台导致计时中断，请尽快回到应用界面！"
+          "检测到悬浮窗未开启！系统可能会杀后台导致计时中断，请尽快回到应用！"
         );
       }
     };
