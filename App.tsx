@@ -21,29 +21,27 @@ const requestNotificationPermission = () => {
   }
 };
 
-// --- 修改：发送通知工具 (PWA 兼容模式) ---
+// --- 修改：发送通知工具 (极简版：点击即自动清理，不乱跳) ---
 const sendNotification = (title, body) => {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
 
-  // 1. 优先尝试 Service Worker (PWA 标准做法，防闪退)
-  if ('serviceWorker' in navigator && navigator.serviceWorker.ready) {
-    navigator.serviceWorker.ready.then(registration => {
-      try {
-        registration.showNotification(title, {
-          body: body,
-          icon: '/icon_final.svg',
-          vibrate: [200, 100, 200],
-          tag: 'levelup-timer', // 防止刷屏
-          renotify: true        // 允许再次震动
-        });
-      } catch (e) {
-        // SW 失败则降级
-        new Notification(title, { body, icon: '/icon_final.svg' });
-      }
+  try {
+    // 使用 Main Thread 通知，以便控制点击行为
+    const notification = new Notification(title, {
+      body: body,
+      icon: '/icon_final.svg',
+      tag: 'levelup-timer', // 覆盖旧通知，防止堆积
+      renotify: true        // 允许再次震动
     });
-  } else {
-    // 2. 降级处理
-    new Notification(title, { body, icon: '/icon_final.svg' });
+
+    // 核心修改：点击后只做一件事 -> 立即关闭通知
+    // 不尝试 window.focus()，防止安卓闪退或跳Chrome
+    notification.onclick = function(e) {
+      e.preventDefault();
+      this.close(); 
+    };
+  } catch (e) {
+    console.error("Notification Error:", e);
   }
 };
 
@@ -1279,27 +1277,30 @@ if (storedTimerState.isActive && storedTimerState.timestamp) {
     }
   };
 
- // --- 3. 新增：切换悬浮窗开关 (修复版) ---
-  const togglePiP = async () => {
+// --- 修改：切换悬浮窗 (支持静默模式，防止报错刷屏) ---
+  const togglePiP = async (isAuto = false) => {
     try {
       if (document.pictureInPictureElement) {
         await document.exitPictureInPicture();
         setIsPipActive(false);
       } else if (videoRef.current && canvasRef.current) {
-        // 关键修复：在请求 PiP 之前，先强制画一帧，确保流有数据
+        // 强制刷新一帧
         updatePiP(timeLeft, mode);
         
-        // 确保视频处于播放状态（防止浏览器为了省电暂停了看不见的视频）
         if (videoRef.current.paused) {
-            await videoRef.current.play().catch(() => {});
+           await videoRef.current.play().catch(() => {});
         }
 
         await videoRef.current.requestPictureInPicture();
         setIsPipActive(true);
       }
     } catch (err) {
-      console.error(err);
-      addNotification("开启失败，请尝试先点击开始计时", "error");
+      console.log("PiP toggle failed:", err);
+      // 关键修改：如果是自动尝试(isAuto=true)，失败了保持安静，不弹报错
+      // 只有用户手动点击(isAuto=false)时，才弹错误提示
+      if (!isAuto) {
+        addNotification("开启失败，请尝试先点击开始计时", "error");
+      }
     }
   };
 
@@ -1329,17 +1330,18 @@ if (storedTimerState.isActive && storedTimerState.timestamp) {
     };
   }, [isActive, mode]);
 
-// --- 修改：回到前台检测 (自动尝试 + 失败显示提示条) ---
+// --- 修改：回到前台检测 (调用静默开启，失败则显示底部条) ---
   useEffect(() => {
     const handleFocus = async () => {
       // 逻辑：如果计时器在跑 && 悬浮窗没开 -> 说明用户切回来了
       if (isActive && !document.pictureInPictureElement) {
         try {
-          // 1. 先偷偷试一下能不能自动打开 (某些旧手机可能允许)
-          await togglePiP();
+          // 传入 true，表示这是自动尝试，失败了别弹窗！
+          await togglePiP(true);
+          // 只有成功了才提示
           addNotification("已自动恢复悬浮窗", "success");
         } catch (e) {
-          // 2. 如果失败 (预期内)，则显示底部提示条，让用户点一下
+          // 失败了（静默），显示底部的“恢复悬浮窗”小条，让用户手动点
           setShowResumeOverlay(true); 
         }
       }
@@ -2360,9 +2362,9 @@ if (storedTimerState.isActive && storedTimerState.timestamp) {
               >
                 <X className="w-5 h-5" />
               </button>
-              <button 
+             <button 
                 onClick={() => {
-                  togglePiP(); // 用户手动点击，必定成功
+                  togglePiP(false); // 手动点击，传入 false (或者不传)，允许报错
                   setShowResumeOverlay(false);
                 }}
                 className="bg-cyan-500 hover:bg-cyan-400 text-black text-xs font-bold px-4 py-2 rounded-lg shadow-lg active:scale-95 transition"
