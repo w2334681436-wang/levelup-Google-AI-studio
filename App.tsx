@@ -682,12 +682,12 @@ const GoldParticles = () => {
 
 return <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none z-0" />;};
 
-// --- 新增：时间预设配置 ---
-const TIMER_PRESETS = {
-  focus: [25, 45, 60, 90],   // 专注常用：番茄、一节课、一小时、深度
-  break: [5, 10, 15, 20],    // 休息常用：小憩、短休、长休
-  gaming: [15, 30, 45, 60],  // 游戏常用
-  overtime: []               // 加时模式不需要预设
+// --- 修改：将原来的 TIMER_PRESETS 改名为 DEFAULT_PRESETS ---
+const DEFAULT_PRESETS = {
+  focus: [25, 45, 60, 90],
+  break: [5, 10, 15, 20],
+  gaming: [15, 30, 45, 60],
+  overtime: []
 };
 
 // --- 5. 主组件 ---
@@ -708,6 +708,7 @@ export default function LevelUpApp() {
   const [activeView, setActiveView] = useState('timer'); 
   const [showTimeUpModal, setShowTimeUpModal] = useState(false); // 询问弹窗状态
   const [overtimeSeconds, setOvertimeSeconds] = useState(0);     // 加时秒数
+  
   const audioRef = useRef(null);                                 // 音频引用
   
   // 数据状态
@@ -766,6 +767,58 @@ export default function LevelUpApp() {
   const DEFAULT_ALARM = "https://actions.google.com/sounds/v1/alarms/beep_short.ogg";
   const [customAlarmSound, setCustomAlarmSound] = useState(localStorage.getItem('custom_alarm_sound'));
   const audioInputRef = useRef(null);
+
+  // ... 其他 State ...
+  
+  // --- 新增：预设管理 State ---
+  // 初始化时尝试从 localStorage 读取，如果没有则使用默认值
+  const [timerPresets, setTimerPresets] = useState(() => {
+    try {
+      const saved = localStorage.getItem('timer_custom_presets');
+      return saved ? JSON.parse(saved) : DEFAULT_PRESETS;
+    } catch (e) {
+      return DEFAULT_PRESETS;
+    }
+  });
+
+  // --- 新增：添加当前时间为预设 ---
+  const addCurrentToPresets = () => {
+    const currentMin = Math.floor(initialTime / 60);
+    // 防止重复添加
+    if (timerPresets[mode].includes(currentMin)) {
+      addNotification("该时长已在预设列表中", "info");
+      return;
+    }
+    
+    const newPresets = {
+      ...timerPresets,
+      [mode]: [...timerPresets[mode], currentMin].sort((a, b) => a - b) // 添加并排序
+    };
+    
+    setTimerPresets(newPresets);
+    localStorage.setItem('timer_custom_presets', JSON.stringify(newPresets));
+    addNotification(`已添加 ${currentMin}分钟 到快捷预设`, "success");
+  };
+
+  // --- 新增：删除预设 ---
+  const removePreset = (valToRemove, e) => {
+    e.stopPropagation(); // 防止触发点击时间切换
+    
+    // 允许删除，但如果想保留默认预设不可删除，可以加个判断。这里我允许全部删除，除了最后一个
+    if (timerPresets[mode].length <= 1) {
+      addNotification("请至少保留一个预设", "error");
+      return;
+    }
+
+    const newPresets = {
+      ...timerPresets,
+      [mode]: timerPresets[mode].filter(t => t !== valToRemove)
+    };
+    
+    setTimerPresets(newPresets);
+    localStorage.setItem('timer_custom_presets', JSON.stringify(newPresets));
+    addNotification(`已删除 ${valToRemove}分钟 预设`, "info");
+  };
 
   // 处理铃声上传
   const handleAlarmUpload = (e) => {
@@ -2564,9 +2617,9 @@ if (storedTimerState.isActive && storedTimerState.timestamp) {
             </div>
           </div>
 
-          {/* --- 新增：时间调节面板 (仅在未开始且非禅模式下显示) --- */}
+          {/* --- 新增：时间调节面板 (支持自定义预设) --- */}
           {!isActive && !isZen && mode !== 'overtime' && (
-            <div className="mb-4 flex flex-col items-center gap-4 animate-in slide-in-from-bottom-4 fade-in duration-500 z-20">
+            <div className="mb-8 flex flex-col items-center gap-4 animate-in slide-in-from-bottom-4 fade-in duration-500 z-20">
               
               {/* 1. 微调控制器 ( - 45 + ) */}
               <div className="flex items-center gap-6 bg-black/40 border border-white/10 rounded-2xl px-6 py-2 backdrop-blur-md shadow-lg">
@@ -2578,7 +2631,7 @@ if (storedTimerState.isActive && storedTimerState.timestamp) {
                    <span className="text-xl font-bold">−</span>
                  </button>
                  
-                 <div className="flex flex-col items-center w-16">
+                 <div className="flex flex-col items-center w-20">
                    <span className="text-2xl font-mono font-bold text-white tracking-tighter">
                      {Math.floor(initialTime / 60)}
                    </span>
@@ -2594,26 +2647,48 @@ if (storedTimerState.isActive && storedTimerState.timestamp) {
                  </button>
               </div>
 
-              {/* 2. 快速预设胶囊 (Presets) */}
-              <div className="flex gap-2">
-                {TIMER_PRESETS[mode].map((m) => (
+              {/* 2. 智能预设胶囊 (列表 + 添加按钮) */}
+              <div className="flex gap-2 flex-wrap justify-center max-w-md">
+                {timerPresets[mode].map((m) => {
+                  const isCurrent = Math.floor(initialTime / 60) === m;
+                  return (
+                    <div key={m} className="relative group">
+                      <button
+                        onClick={() => handleSetDuration(m)}
+                        className={`
+                          px-3 py-1.5 rounded-lg text-xs font-mono font-bold border transition-all active:scale-95 relative overflow-hidden
+                          ${isCurrent
+                            ? 'bg-white text-black border-white shadow-[0_0_10px_rgba(255,255,255,0.4)] scale-105 z-10' 
+                            : 'bg-white/5 text-gray-400 border-white/10 hover:bg-white/10 hover:border-white/30 hover:text-white'}
+                        `}
+                      >
+                        {m}
+                      </button>
+                      {/* 删除按钮：仅在Hover或选中时显示小红叉 */}
+                      <button
+                        onClick={(e) => removePreset(m, e)}
+                        className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm z-20 hover:bg-red-600 scale-75"
+                        title="删除此预设"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  );
+                })}
+
+                {/* 添加当前时间为新预设的按钮 (仅当当前时间不在列表中时显示) */}
+                {!timerPresets[mode].includes(Math.floor(initialTime / 60)) && (
                   <button
-                    key={m}
-                    onClick={() => handleSetDuration(m)}
-                    className={`
-                      px-3 py-1.5 rounded-lg text-xs font-mono font-bold border transition-all active:scale-95
-                      ${Math.floor(initialTime / 60) === m 
-                        ? 'bg-white text-black border-white shadow-[0_0_10px_rgba(255,255,255,0.4)] scale-105' 
-                        : 'bg-white/5 text-gray-400 border-white/10 hover:bg-white/10 hover:border-white/30 hover:text-white'}
-                    `}
+                    onClick={addCurrentToPresets}
+                    className="px-3 py-1.5 rounded-lg text-xs font-bold border border-dashed border-emerald-500/50 text-emerald-500 hover:bg-emerald-500/10 hover:border-emerald-500 transition-all flex items-center gap-1 active:scale-95"
+                    title="将当前时长保存为常用预设"
                   >
-                    {m}
+                    <PlusCircle className="w-3 h-3" /> 保存
                   </button>
-                ))}
+                )}
               </div>
             </div>
           )}
-
           
 {/* --- 新增：禅模式激励金句 --- */}
           {isZen && zenQuote && (
