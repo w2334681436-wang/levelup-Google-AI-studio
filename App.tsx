@@ -682,7 +682,13 @@ const GoldParticles = () => {
 
 return <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none z-0" />;};
 
-
+// --- 新增：时间预设配置 ---
+const TIMER_PRESETS = {
+  focus: [25, 45, 60, 90],   // 专注常用：番茄、一节课、一小时、深度
+  break: [5, 10, 15, 20],    // 休息常用：小憩、短休、长休
+  gaming: [15, 30, 45, 60],  // 游戏常用
+  overtime: []               // 加时模式不需要预设
+};
 
 // --- 5. 主组件 ---
 export default function LevelUpApp() {
@@ -1584,6 +1590,16 @@ if (storedTimerState.isActive && storedTimerState.timestamp) {
     } catch (e) {
       console.error("Quote fetch failed", e);
     }
+  };
+
+  // --- 新增：手动调节时长函数 ---
+  const handleSetDuration = (minutes) => {
+    if (minutes < 1) return; // 至少1分钟
+    const seconds = minutes * 60;
+    setInitialTime(seconds);
+    setTimeLeft(seconds);
+    // 可选：保存用户的最后一次偏好，如果需要的话
+    // localStorage.setItem(`last_${mode}_duration`, minutes); 
   };
   
   const toggleTimer = () => {
@@ -2547,6 +2563,58 @@ if (storedTimerState.isActive && storedTimerState.timestamp) {
                </div>
             </div>
           </div>
+
+          {/* --- 新增：时间调节面板 (仅在未开始且非禅模式下显示) --- */}
+          {!isActive && !isZen && mode !== 'overtime' && (
+            <div className="mb-4 flex flex-col items-center gap-4 animate-in slide-in-from-bottom-4 fade-in duration-500 z-20">
+              
+              {/* 1. 微调控制器 ( - 45 + ) */}
+              <div className="flex items-center gap-6 bg-black/40 border border-white/10 rounded-2xl px-6 py-2 backdrop-blur-md shadow-lg">
+                 <button 
+                   onClick={() => handleSetDuration(Math.floor(initialTime / 60) - 5)}
+                   className="text-gray-400 hover:text-white hover:bg-white/10 p-2 rounded-lg transition active:scale-95"
+                   title="-5分钟"
+                 >
+                   <span className="text-xl font-bold">−</span>
+                 </button>
+                 
+                 <div className="flex flex-col items-center w-16">
+                   <span className="text-2xl font-mono font-bold text-white tracking-tighter">
+                     {Math.floor(initialTime / 60)}
+                   </span>
+                   <span className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">MIN</span>
+                 </div>
+
+                 <button 
+                   onClick={() => handleSetDuration(Math.floor(initialTime / 60) + 5)}
+                   className="text-gray-400 hover:text-white hover:bg-white/10 p-2 rounded-lg transition active:scale-95"
+                   title="+5分钟"
+                 >
+                   <span className="text-xl font-bold">+</span>
+                 </button>
+              </div>
+
+              {/* 2. 快速预设胶囊 (Presets) */}
+              <div className="flex gap-2">
+                {TIMER_PRESETS[mode].map((m) => (
+                  <button
+                    key={m}
+                    onClick={() => handleSetDuration(m)}
+                    className={`
+                      px-3 py-1.5 rounded-lg text-xs font-mono font-bold border transition-all active:scale-95
+                      ${Math.floor(initialTime / 60) === m 
+                        ? 'bg-white text-black border-white shadow-[0_0_10px_rgba(255,255,255,0.4)] scale-105' 
+                        : 'bg-white/5 text-gray-400 border-white/10 hover:bg-white/10 hover:border-white/30 hover:text-white'}
+                    `}
+                  >
+                    {m}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          
 {/* --- 新增：禅模式激励金句 --- */}
           {isZen && zenQuote && (
             <div className="my-8 max-w-2xl px-6 text-center z-20 animate-in fade-in slide-in-from-bottom-4 duration-1000">
@@ -3136,7 +3204,9 @@ if (storedTimerState.isActive && storedTimerState.timestamp) {
                      <p className="text-[10px] text-gray-500 mt-2">导出包含：历史记录、学习进度、个性化设置（不含API Key）</p>
                   </div>
                </div>
-              
+
+              
+              
               <div className="mt-4 pt-4 border-t border-gray-800 safe-area-bottom">
                  <button onClick={() => setShowSettings(false)} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition-colors">关闭设置</button>
               </div>
