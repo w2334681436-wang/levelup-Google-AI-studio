@@ -1489,7 +1489,7 @@ if (storedTimerState.isActive && storedTimerState.timestamp) {
 
  const updateStudyStats = (seconds, log) => {
     const m = Math.floor(seconds / 60);
-    const g = Math.floor(m / 9); 
+    const g = Math.floor(m / 10); 
     const newStats = { 
       ...todayStats, 
       studyMinutes: todayStats.studyMinutes + m, 
@@ -2138,28 +2138,29 @@ if (storedTimerState.isActive && storedTimerState.timestamp) {
       
       const target = customTargetHours || stage.targetHours;
 
-      let dataContext = `
-        --- 实时学习数据 ---
-        1. 考研目标: 上海交大/中科大AI硕士(2026)。
-        2. 每日目标学习时长: ${target}小时。
-        3. 个人背景档案: ${customUserBackground || '未填写'}
-        4. 今日(${getTodayDateString()})统计: 已学习 ${(todayStats.studyMinutes / 60).toFixed(1)}h, 游戏券余额 ${todayStats.gameBank}m。
-        5. 学习进度板 (最新的学习内容和状态):
-           - 英语: ${learningProgress.english.content || '暂无记录'} (更新于 ${learningProgress.english.lastUpdate})
-           - 政治: ${learningProgress.politics.content || '暂无记录'} (更新于 ${learningProgress.politics.lastUpdate})
-           - 数学: ${learningProgress.math.content || '暂无记录'} (更新于 ${learningProgress.math.lastUpdate})
-           - 408: ${learningProgress.cs.content || '暂无记录'} (更新于 ${learningProgress.cs.lastUpdate})
-      `;
+    let dataContext = `
+        --- 实时学习数据 ---
+        1. 考研目标: 上海交大/中科大AI硕士(2026)。
+        2. 每日目标学习时长: ${target}小时。
+        3. 个人背景档案: ${customUserBackground || '未填写'}
+        4. 游戏机制规则: 每专注学习10分钟获得1分钟游戏券。
+        5. 今日(${getTodayDateString()})统计: 已学习 ${(todayStats.studyMinutes / 60).toFixed(1)}h。
+        6. ⚠️ 当前游戏券余额: ${todayStats.gameBank}分钟 (这是用户当前唯一可用的娱乐时长，严禁凭空建议休息15分钟，必须基于此余额)。
+        7. 学习进度板 (最新的学习内容和状态):
+           - 英语: ${learningProgress.english.content || '暂无记录'} (更新于 ${learningProgress.english.lastUpdate})
+           - 政治: ${learningProgress.politics.content || '暂无记录'} (更新于 ${learningProgress.politics.lastUpdate})
+           - 数学: ${learningProgress.math.content || '暂无记录'} (更新于 ${learningProgress.math.lastUpdate})
+           - 408: ${learningProgress.cs.content || '暂无记录'} (更新于 ${learningProgress.cs.lastUpdate})
+      `;
 
-      if (yesterdayData) {
-        const studyHours = (yesterdayData.studyMinutes / 60).toFixed(1);
-        dataContext += `\n5. 昨日(${yesterdayStr})统计: 学习 ${studyHours}h (目标 ${target}h), 玩 ${yesterdayData.gameUsed}m。昨日日志摘要: ${yesterdayData.logs.map((l) => typeof l.content === 'string' ? l.content : '日志').join('; ')}`;
-      } else {
-        dataContext += `\n5. 昨日(${yesterdayStr})无学习记录。`;
-      }
+      if (yesterdayData) {
+        const studyHours = (yesterdayData.studyMinutes / 60).toFixed(1);
+        dataContext += `\n8. 昨日(${yesterdayStr})统计: 学习 ${studyHours}h (目标 ${target}h), 玩 ${yesterdayData.gameUsed}m。昨日日志摘要: ${yesterdayData.logs.map((l) => typeof l.content === 'string' ? l.content : '日志').join('; ')}`;
+      } else {
+        dataContext += `\n8. 昨日(${yesterdayStr})无学习记录。`;
+      }
 
-      const systemContext = `${currentPersona}\n\n${dataContext}\n\n根据以上学习内容和你的专业知识，评估用户当前学习阶段（${stage.name}）的进度是落后、正常还是超前，并用你的人设给出简洁的分析、建议或鼓励。请使用markdown格式回复，用**粗体**强调重点，用###表示小标题，用-表示列表项。`;
-
+      const systemContext = `${currentPersona}\n\n${dataContext}\n\n根据以上学习内容和你的专业知识，评估用户当前学习阶段（${stage.name}）的进度是落后、正常还是超前，并用你的人设给出简洁的分析、建议或鼓励。**重要：涉及到休息时间时，请严格根据用户的“游戏券余额”来建议，不要使用通用的番茄钟休息时间。**请使用markdown格式回复，用**粗体**强调重点，用###表示小标题，用-表示列表项。`;
       const initialMsg = { role: 'system', content: systemContext };
       const triggerMsg = { role: 'user', content: "导师，请评估我当前的整体学习情况和进度。" };
       
@@ -2624,7 +2625,7 @@ if (storedTimerState.isActive && storedTimerState.timestamp) {
                  
                  {!isZen && mode === 'focus' && isActive && (
                     <div className="text-[10px] text-gray-500 mt-2 bg-gray-800 px-2 py-1 rounded-full animate-pulse border border-gray-700">
-                      预计收益: +{Math.floor(initialTime / 60 / 9)}m 券
+                      预计收益: +{Math.floor(initialTime / 60 / 10)}m 券
                     </div>
                  )}
                </div>
@@ -3058,7 +3059,7 @@ if (storedTimerState.isActive && storedTimerState.timestamp) {
                )}
 
                <div><label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">本次成果 (Log Content)</label><textarea value={logContent} onChange={(e) => setLogContent(e.target.value)} placeholder="做了什么？(例如：完成了660题第二章前10题，理解了泰勒公式展开...)" className="w-full bg-black/50 border border-gray-700 rounded-xl p-4 text-gray-200 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 min-h-[120px] resize-none text-sm placeholder:text-gray-700" autoFocus /></div>
-               <button onClick={saveLog} disabled={!logContent.trim()} className="w-full bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-emerald-900/20 flex items-center justify-center gap-2"><Save className="w-4 h-4" /> 存入档案并休息 (+{isManualLog ? Math.floor(manualDuration/9) : Math.floor(pendingStudyTime/60/4.5)}m 券)</button>
+               <button onClick={saveLog} disabled={!logContent.trim()} className="w-full bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-emerald-900/20 flex items-center justify-center gap-2"><Save className="w-4 h-4" /> 存入档案并休息 (+{isManualLog ? Math.floor(manualDuration/10) : Math.floor(pendingStudyTime/60/4.5)}m 券)</button>
             </div>
             
             <button onClick={() => setShowLogModal(false)} className="absolute top-4 right-4 text-gray-500 hover:text-white"><X className="w-5 h-5"/></button>
