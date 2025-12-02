@@ -2121,54 +2121,77 @@ if (storedTimerState.isActive && storedTimerState.timestamp) {
     }
   };
 
-  const startAICoach = () => {
-    if (!apiKey) {
-      addNotification("请先在设置中输入 API Key！", "error");
-      setShowSettings(true);
-      return;
-    }
-    setShowChatModal(true);
-    saveUnreadMessages(0); 
-    
-    const currentPersona = customPersona.trim() || DEFAULT_PERSONA;
-    
-    if (chatMessages.length === 0 || chatMessages.length === 1 && chatMessages[0].role === 'system') {
-      const yesterdayStr = getYesterdayDateString();
-      const yesterdayData = history.find(d => d.date === yesterdayStr);
-      
-      const target = customTargetHours || stage.targetHours;
+const startAICoach = () => {
+    if (!apiKey) {
+      addNotification("请先在设置中输入 API Key！", "error");
+      setShowSettings(true);
+      return;
+    }
+    setShowChatModal(true);
+    saveUnreadMessages(0); 
+    
+    const currentPersona = customPersona.trim() || DEFAULT_PERSONA;
+    
+    // 只有当这是新对话时，才发送上下文
+    if (chatMessages.length === 0 || chatMessages.length === 1 && chatMessages[0].role === 'system') {
+      
+      const target = customTargetHours || stage.targetHours;
 
-    let dataContext = `
-        --- 实时学习数据 ---
-        1. 考研目标: 上海交大/中科大AI硕士(2026)。
-        2. 每日目标学习时长: ${target}小时。
-        3. 个人背景档案: ${customUserBackground || '未填写'}
-        4. 游戏机制规则: 每专注学习10分钟获得1分钟游戏券。
-        5. 今日(${getTodayDateString()})统计: 已学习 ${(todayStats.studyMinutes / 60).toFixed(1)}h。
-        6. ⚠️ 当前游戏券余额: ${todayStats.gameBank}分钟 (这是用户当前唯一可用的娱乐时长，严禁凭空建议休息15分钟，必须基于此余额)。
-        7. 学习进度板 (最新的学习内容和状态):
-           - 英语: ${learningProgress.english.content || '暂无记录'} (更新于 ${learningProgress.english.lastUpdate})
-           - 政治: ${learningProgress.politics.content || '暂无记录'} (更新于 ${learningProgress.politics.lastUpdate})
-           - 数学: ${learningProgress.math.content || '暂无记录'} (更新于 ${learningProgress.math.lastUpdate})
-           - 408: ${learningProgress.cs.content || '暂无记录'} (更新于 ${learningProgress.cs.lastUpdate})
+      // 1. 格式化【今日】数据
+      const todayLogDetails = todayStats.logs && todayStats.logs.length > 0
+        ? todayStats.logs.map((l, i) => `   - [${l.time}] 投入${l.duration}分钟: ${l.content}`).join('\n')
+        : "   - 暂无具体打卡记录";
+      
+      const todayEntry = `📅 [${todayStats.date}] (今天):
+   - 总投入: ${(todayStats.studyMinutes / 60).toFixed(1)}h / 目标${target}h
+   - 游戏券余额: ${todayStats.gameBank}m
+   - 详细日志:
+${todayLogDetails}`;
+
+      // 2. 格式化【历史】档案 (取最近 30 天，防止 Token 爆炸)
+      const historyArchive = history.slice(0, 30).map(entry => {
+         const logStr = entry.logs && entry.logs.length > 0
+            ? entry.logs.map(l => `   - [${l.time}] ${l.duration}m: ${l.content}`).join('\n')
+            : "   - 无详细记录";
+         return `📅 [${entry.date}]:\n   - 总投入: ${(entry.studyMinutes / 60).toFixed(1)}h\n${logStr}`;
+      }).join('\n\n');
+
+      // 3. 组装完整的上下文
+      let dataContext = `
+        --- 🎓 考研学习全息档案 🎓 ---
+        
+        【基本信息】
+        1. 目标: 上海交大/中科大AI硕士(2026)。
+        2. 每日目标: ${target}小时。
+        3. 背景: ${customUserBackground || '未填写'}
+        4. 规则: 专注10分钟 = 1分钟游戏券。
+        
+        【总体学科进度】
+        - 英语: ${learningProgress.english.content || '无'}
+        - 政治: ${learningProgress.politics.content || '无'}
+        - 数学: ${learningProgress.math.content || '无'}
+        - 408: ${learningProgress.cs.content || '无'}
+
+        【📅 每日实战记录档案 (Recent 30 Days)】
+        (AI注意：用户如果询问任意一天的复盘，请在此档案中检索对应日期的数据)
+        
+        ${todayEntry}
+        
+        ${historyArchive}
       `;
 
-      if (yesterdayData) {
-        const studyHours = (yesterdayData.studyMinutes / 60).toFixed(1);
-        dataContext += `\n8. 昨日(${yesterdayStr})统计: 学习 ${studyHours}h (目标 ${target}h), 玩 ${yesterdayData.gameUsed}m。昨日日志摘要: ${yesterdayData.logs.map((l) => typeof l.content === 'string' ? l.content : '日志').join('; ')}`;
-      } else {
-        dataContext += `\n8. 昨日(${yesterdayStr})无学习记录。`;
-      }
+      const systemContext = `${currentPersona}\n\n${dataContext}\n\n指令：你是用户的全能考研导师。你拥有用户最近30天的所有详细学习记录（在【每日实战记录档案】中）。\n1. 如果用户求复盘“今天”，请重点分析${todayStats.date}的数据。\n2. 如果用户求复盘“昨天”或“x月x日”，请务必在档案中查找对应日期的日志，不要编造。\n3. 分析时要结合具体做了什么（如做了哪章题、背了多少词），给出针对性建议。\n4. 保持格式清晰，使用Markdown。`;
 
-      const systemContext = `${currentPersona}\n\n${dataContext}\n\n根据以上学习内容和你的专业知识，评估用户当前学习阶段（${stage.name}）的进度是落后、正常还是超前，并用你的人设给出简洁的分析、建议或鼓励。**重要：涉及到休息时间时，请严格根据用户的“游戏券余额”来建议，不要使用通用的番茄钟休息时间。**请使用markdown格式回复，用**粗体**强调重点，用###表示小标题，用-表示列表项。`;
-      const initialMsg = { role: 'system', content: systemContext };
-      const triggerMsg = { role: 'user', content: "导师，请评估我当前的整体学习情况和进度。" };
-      
-      const newHistory = [initialMsg, triggerMsg];
-      setChatMessages(newHistory); 
-      sendToAI(newHistory);
-    }
-  };
+      const initialMsg = { role: 'system', content: systemContext };
+      
+      // 默认触发语改得更通用一点，引导用户去问
+      const triggerMsg = { role: 'user', content: "导师，请查看我的学习记录。你可以帮我复盘今天、昨天或之前的任意一天的学习情况吗？" };
+      
+      const newHistory = [initialMsg, triggerMsg];
+      setChatMessages(newHistory); 
+      sendToAI(newHistory);
+    }
+  };
 
   const startNewChat = () => {
     setChatMessages([]);
