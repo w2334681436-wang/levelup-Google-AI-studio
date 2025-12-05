@@ -1359,7 +1359,7 @@ if (storedTimerState.isActive && storedTimerState.timestamp) {
     localStorage.setItem('ai_unread_messages', count.toString());
   };
 
-// --- 2. 增强版：绘制悬浮窗内容 (HUD 战术面板风格) ---
+// --- 2. 增强版：绘制悬浮窗内容 (低功耗稳定版) ---
   const updatePiP = (seconds, currentMode) => {
     const canvas = canvasRef.current;
     const video = videoRef.current;
@@ -1373,119 +1373,83 @@ if (storedTimerState.isActive && storedTimerState.timestamp) {
     const total = initialTime > 0 ? initialTime : 1;
     const progress = Math.max(0, Math.min(1, (total - seconds) / total));
 
-    // --- A. 定义主题色与文案 (修改部分) ---
+    // --- A. 定义主题色与文案 (去除了呼吸效果) ---
     let primaryColor, glowColor, statusText, headerText;
-    const pulse = 0.4 + Math.abs(Math.sin(Date.now() / 800)) * 0.6; 
     
-    // >>>>> 新增：动态点点点计算 (500ms 变化一次) <<<<<
-    const dotCycle = Math.floor(Date.now() / 500) % 4; 
-    const dots = ".".repeat(dotCycle); // 生成 "", ".", "..", "..."
+    // >>>>> 核心修改：根据秒数生成点点点 (0 -> 1 -> 2 -> 3 -> 0) <<<<<
+    // 这样每过一秒，点就会变一次，不再需要高频动画
+    const dotCount = Math.abs(seconds) % 4;
+    const dots = ".".repeat(dotCount).padEnd(3, ' '); // 补空格防止文字跳动
 
     if (seconds <= 0 && currentMode === 'focus') { 
-        // ... existing code ...
+        primaryColor = '#ef4444'; 
+        glowColor = '#7f1d1d';
         statusText = "VICTORY PENDING"; 
         headerText = "⚠ 专注目标达成";
     } else if (currentMode === 'overtime') { 
         primaryColor = '#fbbf24'; 
         glowColor = '#d97706';
         statusText = `PEAK SCORE: ${rankState.peakScore}`; 
-        // 修改：加上 dots
-        headerText = `🏆 巅峰赛 • 加时激战中${dots}`;
+        headerText = `🏆 加时激战中${dots}`;
     } else if (currentMode === 'break') { 
         primaryColor = '#60a5fa'; 
         glowColor = '#2563eb';
-        // 修改：去掉原本静态的...，加上动态 dots
         statusText = `RECOVERING${dots}`;
         headerText = `💤 泉水回血中${dots}`;
     } else { 
         primaryColor = '#34d399'; 
         glowColor = '#059669';
         statusText = "DEEP WORK PROTOCOL";
-        // 修改：加上 dots
-        headerText = `⚡ RANKED MATCH • 对局进行中${dots}`;
-    }
-    // --- B. 绘制背景 (深色科技底) ---
-    ctx.fillStyle = '#050505'; // 近乎纯黑
-    ctx.fillRect(0, 0, width, height);
-    
-    // 扫描线特效 (增加电竞屏质感)
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.02)';
-    for (let i = 0; i < height; i += 3) {
-        ctx.fillRect(0, i, width, 1);
+        headerText = `⚡ 对局进行中${dots}`;
     }
 
-    // --- C. 绘制霓虹边框 ---
+    // --- B. 绘制背景 (纯黑底，去掉扫描线以防闪烁) ---
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, width, height);
+
+    // --- C. 绘制静态边框 ---
     ctx.lineWidth = 6;
     ctx.strokeStyle = primaryColor;
-    ctx.shadowBlur = 15;
-    ctx.shadowColor = glowColor;
     ctx.strokeRect(0, 0, width, height);
-    ctx.shadowBlur = 0; // 重置阴影
 
-    // --- D. 绘制防黑屏“心跳”像素 ---
-    const flicker = Math.floor(Date.now() / 1000) % 2;
-    ctx.fillStyle = flicker ? '#111' : '#000';
-    ctx.fillRect(10, 10, 2, 2);
-
-    // --- E. 绘制顶部 HUD (对局进行中) [新增部分] ---
+    // --- D. 绘制顶部 HUD ---
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    
-    // 顶部文字光晕
-    ctx.shadowColor = glowColor;
-    ctx.shadowBlur = 10;
     ctx.fillStyle = primaryColor;
-    // 根据呼吸因子设置透明度，模拟信号灯
-    ctx.globalAlpha = pulse; 
+    ctx.globalAlpha = 1.0; // 保持完全不透明，不闪烁
     
     ctx.font = `bold 22px "Inter", "system-ui", sans-serif`;
-    // 稍微向上画一点，留出空间给数字
     ctx.fillText(headerText, width / 2, height / 2 - 90); 
-    
-    ctx.globalAlpha = 1.0; // 恢复不透明
 
-    // --- F. 绘制主要时间 (巨大的发光数字) ---
+    // --- E. 绘制主要时间 ---
     ctx.fillStyle = '#ffffff';
-    // 等宽字体，数字感强
     ctx.font = `bold 130px "JetBrains Mono", "Courier New", monospace`; 
-    
-    // 强烈的数字辉光
-    ctx.shadowColor = glowColor;
-    ctx.shadowBlur = 25;
+    // 去掉辉光阴影，提高清晰度
+    ctx.shadowBlur = 0; 
     
     let timeStr = "";
     if (currentMode === 'overtime') timeStr = `+${formatTime(seconds)}`;
     else timeStr = seconds <= 0 ? "00:00" : formatTime(seconds);
     
-    // 居中绘制
     ctx.fillText(timeStr, width / 2, height / 2 + 10);
 
-    // --- G. 绘制底部状态文字 ---
+    // --- F. 绘制底部状态文字 ---
     ctx.font = `bold 18px "Inter", sans-serif`;
     ctx.fillStyle = primaryColor;
-    ctx.shadowBlur = 5; 
-    ctx.letterSpacing = "2px";
     ctx.fillText(statusText, width / 2, height / 2 + 100);
     
-    // --- H. 绘制底部进度条 (类似血条/蓝条) ---
+    // --- G. 绘制底部进度条 ---
     if (currentMode !== 'overtime') {
-        ctx.shadowBlur = 0;
-        // 进度条槽
-        ctx.fillStyle = 'rgba(255,255,255,0.1)';
+        ctx.fillStyle = 'rgba(255,255,255,0.2)';
         ctx.fillRect(0, height - 12, width, 12);
-        // 进度条实体
         ctx.fillStyle = primaryColor;
-        // 增加一点高光效果
-        ctx.shadowColor = primaryColor;
-        ctx.shadowBlur = 10;
         ctx.fillRect(0, height - 12, width * (1 - progress), 12); 
     }
 
-    // --- I. 视频流保活 ---
-    if (!video.srcObject) {
-       const stream = canvas.captureStream(30);
-       video.srcObject = stream;
-       video.play().catch((e) => console.log("PiP play error:", e));
+    // --- H. 视频流保活 (关键) ---
+    // 只有当视频暂停时才手动触发播放
+    if (video.paused) {
+        video.play().catch(() => {});
     }
   };
 
@@ -1540,29 +1504,19 @@ if (storedTimerState.isActive && storedTimerState.timestamp) {
     };
   }, [isActive, mode]);
 
-// --- 4. 优化：实时更新悬浮窗画面 (60FPS 高帧率渲染版) ---
+// --- 4. 新增：低功耗画面同步刷新器 (每秒触发一次) ---
+  // 替代了原来的 60FPS 循环，配合 updatePiP 中的静态逻辑，彻底解决后台卡顿
   useEffect(() => {
-    let animationFrameId;
-
-    // 定义渲染循环函数
-    const renderLoop = () => {
-      updatePiP(timeLeft, mode); // 每一帧都重绘
-      animationFrameId = requestAnimationFrame(renderLoop); // 请求下一帧
-    };
-
+    // 只有在开启悬浮窗时，才需要手动更新 Canvas
     if (isPipActive) {
-      // 开启悬浮窗时：启动高帧率循环 (60FPS)
-      renderLoop();
-    } else if (isActive) {
-      // 没开悬浮窗时：仅在时间变化时重绘一次 (省电)
       updatePiP(timeLeft, mode);
     }
-
-    // 清理函数：组件卸载或状态变化时停止动画，防止内存泄漏
-    return () => {
-      if (animationFrameId) cancelAnimationFrame(animationFrameId);
-    };
-  }, [timeLeft, mode, isActive, isPipActive]);
+    
+    // 顺便利用这个每秒一次的时机，更新网页标题 (可选)
+    if (isActive) {
+        document.title = `${formatTime(timeLeft)} - ${mode === 'focus' ? '专注中' : '休息中'}`;
+    }
+  }, [timeLeft, mode, isPipActive, isActive]); // 关键依赖：timeLeft 变了(过了一秒)，就重画一次
 
   useEffect(() => {
     if (chatMessages.length > 0) {
