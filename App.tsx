@@ -1359,7 +1359,7 @@ if (storedTimerState.isActive && storedTimerState.timestamp) {
     localStorage.setItem('ai_unread_messages', count.toString());
   };
 
-// --- 2. 增强版：绘制悬浮窗内容 (低功耗稳定版) ---
+// --- 2. 增强版：绘制悬浮窗内容 (画质拉满·低功耗版) ---
   const updatePiP = (seconds, currentMode) => {
     const canvas = canvasRef.current;
     const video = videoRef.current;
@@ -1373,87 +1373,104 @@ if (storedTimerState.isActive && storedTimerState.timestamp) {
     const total = initialTime > 0 ? initialTime : 1;
     const progress = Math.max(0, Math.min(1, (total - seconds) / total));
 
-    // --- A. 定义主题色与文案 (去除了呼吸效果) ---
+    // --- A. 定义主题色 (电竞配色) ---
     let primaryColor, glowColor, statusText, headerText;
     
-    // >>>>> 核心修改：根据秒数生成点点点 (0 -> 1 -> 2 -> 3 -> 0) <<<<<
-    // 这样每过一秒，点就会变一次，不再需要高频动画
+    // 动态点点点 (每秒变化，无需高频刷新)
     const dotCount = Math.abs(seconds) % 4;
-    const dots = ".".repeat(dotCount).padEnd(3, ' '); // 补空格防止文字跳动
+    const dots = ".".repeat(dotCount).padEnd(3, ' '); 
 
     if (seconds <= 0 && currentMode === 'focus') { 
-        primaryColor = '#ef4444'; 
-        glowColor = '#7f1d1d';
+        primaryColor = '#ef4444'; // 红色警戒
+        glowColor = '#991b1b';
         statusText = "VICTORY PENDING"; 
         headerText = "⚠ 专注目标达成";
     } else if (currentMode === 'overtime') { 
-        primaryColor = '#fbbf24'; 
+        primaryColor = '#fbbf24'; // 金色传说
         glowColor = '#d97706';
         statusText = `PEAK SCORE: ${rankState.peakScore}`; 
-        headerText = `🏆 加时激战中${dots}`;
+        headerText = `🏆 巅峰加时${dots}`;
     } else if (currentMode === 'break') { 
-        primaryColor = '#60a5fa'; 
+        primaryColor = '#60a5fa'; // 蓝色恢复
         glowColor = '#2563eb';
         statusText = `RECOVERING${dots}`;
-        headerText = `💤 泉水回血中${dots}`;
+        headerText = `💤 泉水回血${dots}`;
     } else { 
-        primaryColor = '#34d399'; 
+        primaryColor = '#34d399'; // 青色科技
         glowColor = '#059669';
         statusText = "DEEP WORK PROTOCOL";
         headerText = `⚡ 对局进行中${dots}`;
     }
 
-    // --- B. 绘制背景 (纯黑底，去掉扫描线以防闪烁) ---
-    ctx.fillStyle = '#000000';
+    // --- B. 绘制背景 (恢复科技质感) ---
+    // 1. 深色微渐变背景 (比纯黑高级)
+    const gradient = ctx.createLinearGradient(0, 0, 0, height);
+    gradient.addColorStop(0, '#0f172a'); // 顶部深蓝黑
+    gradient.addColorStop(1, '#020617'); // 底部纯黑
+    ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, width, height);
 
-    // --- C. 绘制静态边框 ---
+    // 2. 扫描线特效 (增加电竞屏质感)
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
+    for (let i = 0; i < height; i += 4) {
+        ctx.fillRect(0, i, width, 1);
+    }
+
+    // --- C. 绘制霓虹边框 (带发光) ---
     ctx.lineWidth = 6;
     ctx.strokeStyle = primaryColor;
+    ctx.shadowBlur = 20; // 强发光
+    ctx.shadowColor = glowColor;
     ctx.strokeRect(0, 0, width, height);
-
+    
     // --- D. 绘制顶部 HUD ---
+    ctx.shadowBlur = 10; // 文字发光
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = primaryColor;
-    ctx.globalAlpha = 1.0; // 保持完全不透明，不闪烁
     
     ctx.font = `bold 22px "Inter", "system-ui", sans-serif`;
-    ctx.fillText(headerText, width / 2, height / 2 - 90); 
+    ctx.fillText(headerText, width / 2, height / 2 - 95); 
 
-    // --- E. 绘制主要时间 ---
+    // --- E. 绘制主要时间 (巨大的发光数字) ---
     ctx.fillStyle = '#ffffff';
-    ctx.font = `bold 130px "JetBrains Mono", "Courier New", monospace`; 
-    // 去掉辉光阴影，提高清晰度
-    ctx.shadowBlur = 0; 
+    // 增大字号，使用等宽字体
+    ctx.font = `bold 140px "JetBrains Mono", "Courier New", monospace`; 
+    ctx.shadowBlur = 30; // 强烈的数字辉光
+    ctx.shadowColor = glowColor;
     
     let timeStr = "";
     if (currentMode === 'overtime') timeStr = `+${formatTime(seconds)}`;
     else timeStr = seconds <= 0 ? "00:00" : formatTime(seconds);
     
-    ctx.fillText(timeStr, width / 2, height / 2 + 10);
+    // 稍微调整y坐标，让视觉更平衡
+    ctx.fillText(timeStr, width / 2, height / 2 + 15);
 
     // --- F. 绘制底部状态文字 ---
-    ctx.font = `bold 18px "Inter", sans-serif`;
+    ctx.shadowBlur = 5; 
+    ctx.font = `bold 16px "Inter", sans-serif`;
     ctx.fillStyle = primaryColor;
-    ctx.fillText(statusText, width / 2, height / 2 + 100);
+    ctx.letterSpacing = "2px";
+    ctx.fillText(statusText, width / 2, height / 2 + 110);
     
-    // --- G. 绘制底部进度条 ---
+    // --- G. 绘制底部能量条 ---
     if (currentMode !== 'overtime') {
-        ctx.fillStyle = 'rgba(255,255,255,0.2)';
-        ctx.fillRect(0, height - 12, width, 12);
+        ctx.shadowBlur = 0; // 进度条不需要发光太严重
+        // 进度条槽
+        ctx.fillStyle = 'rgba(255,255,255,0.1)';
+        ctx.fillRect(0, height - 10, width, 10);
+        // 进度条实体
         ctx.fillStyle = primaryColor;
-        ctx.fillRect(0, height - 12, width * (1 - progress), 12); 
+        ctx.shadowBlur = 10; // 仅给自己发光
+        ctx.shadowColor = primaryColor;
+        ctx.fillRect(0, height - 10, width * (1 - progress), 10); 
     }
 
- // --- H. 视频流保活 (关键) ---
-    // 1. 关键修复：如果视频没有源，将 Canvas 的流赋给它
+    // --- H. 视频流保活 (关键) ---
     if (!video.srcObject) {
-        const stream = canvas.captureStream(); // 捕获 Canvas 画面
+        const stream = canvas.captureStream();
         video.srcObject = stream;
     }
-
-    // 2. 只有当视频暂停时才手动触发播放
     if (video.paused) {
         video.play().catch(() => {});
     }
