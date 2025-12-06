@@ -2765,24 +2765,84 @@ ${todayLogDetails}`;
         }}
       ></div>
 
-      {/* 禅模式极简 HUD (细线条 + 荧光阴影) */}
+     {/* 禅模式极简 HUD (复刻悬浮窗同款 UI) */}
       {isZen && (
-        <div className="absolute inset-0 z-0 pointer-events-none animate-in fade-in duration-1000">
-           <div className="absolute inset-6 md:inset-10 flex flex-col justify-between">
-              <div className="flex justify-between">
-                <div className={`w-8 h-8 md:w-16 md:h-16 border-t-2 border-l-2 rounded-tl-lg transition-all duration-500 shadow-[0_0_10px_currentColor] ${getThemeColor().split(' ')[0]}`}></div>
-                <div className={`w-8 h-8 md:w-16 md:h-16 border-t-2 border-r-2 rounded-tr-lg transition-all duration-500 shadow-[0_0_10px_currentColor] ${getThemeColor().split(' ')[0]}`}></div>
+        <div className="absolute inset-0 z-40 flex items-center justify-center p-4 md:p-10 animate-in fade-in duration-700">
+           {/* 1. 全屏背景光晕 (与悬浮窗一致的径向渐变) */}
+           <div className={`absolute inset-0 bg-[radial-gradient(circle_at_center,var(--tw-gradient-from)_0%,black_70%)] opacity-40 ${getBgColor()}`}></div>
+           
+           {/* 2. 战术边框容器 (Canvas 同款布局) */}
+           <div className={`relative w-full max-w-5xl h-[80vh] border-2 flex flex-col items-center justify-between py-20 transition-all duration-1000 ${
+               mode === 'focus' ? 'border-emerald-500/30 shadow-[0_0_50px_rgba(16,185,129,0.1)]' :
+               mode === 'break' ? 'border-blue-500/30 shadow-[0_0_50px_rgba(59,130,246,0.1)]' :
+               mode === 'gaming' ? 'border-purple-500/30 shadow-[0_0_50px_rgba(168,85,247,0.1)]' :
+               'border-amber-500/30 shadow-[0_0_50px_rgba(245,158,11,0.1)]'
+           }`}>
+              
+              {/* 顶部状态文字 */}
+              <div className={`text-2xl md:text-3xl font-bold tracking-[0.2em] uppercase flex items-center gap-4 animate-pulse ${
+                  mode === 'focus' ? 'text-emerald-400' :
+                  mode === 'break' ? 'text-blue-400' :
+                  mode === 'gaming' ? 'text-purple-400' :
+                  'text-amber-400'
+              }`}>
+                 <span className="w-3 h-3 rounded-full bg-current shadow-[0_0_10px_currentColor]"></span>
+                 {mode === 'focus' ? (timeLeft <= 0 ? "⚠ 专注目标达成" : "⚡ 对局进行中...") : 
+                  mode === 'overtime' ? "🏆 巅峰加时赛" :
+                  mode === 'break' ? "💤 泉水回血中..." : "🎮 娱乐放松中..."}
+                 <span className="w-3 h-3 rounded-full bg-current shadow-[0_0_10px_currentColor]"></span>
               </div>
-              <div className="flex justify-between">
-                <div className={`w-8 h-8 md:w-16 md:h-16 border-b-2 border-l-2 rounded-bl-lg transition-all duration-500 shadow-[0_0_10px_currentColor] ${getThemeColor().split(' ')[0]}`}></div>
-                <div className={`w-8 h-8 md:w-16 md:h-16 border-b-2 border-r-2 rounded-br-lg transition-all duration-500 shadow-[0_0_10px_currentColor] ${getThemeColor().split(' ')[0]}`}></div>
+
+              {/* 核心时间显示 (超大字体，无圆环) */}
+              <div className={`font-mono font-bold text-[12rem] md:text-[18rem] leading-none tracking-tighter drop-shadow-2xl tabular-nums select-none ${
+                  mode === 'overtime' ? 'text-amber-400 drop-shadow-[0_0_30px_rgba(245,158,11,0.6)]' : 'text-white'
+              }`}>
+                 {mode === 'overtime' ? `+${formatTime(timeLeft)}` : formatTime(timeLeft)}
               </div>
-           </div>
-           <div className="absolute top-8 left-1/2 -translate-x-1/2 text-[10px] font-mono text-white/40 tracking-[0.8em] uppercase">System Active</div>
-           <div className="absolute bottom-8 left-1/2 -translate-x-1/2 text-[10px] font-mono text-white/30 tracking-[0.8em] uppercase flex items-center gap-4">
-              <span className="inline-block w-2 h-2 rounded-full bg-current animate-pulse"></span>
-              {mode} protocol
-              <span className="inline-block w-2 h-2 rounded-full bg-current animate-pulse"></span>
+
+              {/* 底部协议文字 & 进度条 */}
+              <div className="w-full max-w-3xl flex flex-col items-center gap-8">
+                  <div className={`text-xl md:text-2xl font-bold tracking-[0.5em] uppercase opacity-80 ${
+                      mode === 'focus' ? 'text-emerald-500' :
+                      mode === 'break' ? 'text-blue-500' :
+                      mode === 'gaming' ? 'text-purple-500' :
+                      'text-amber-500'
+                  }`}>
+                      {mode === 'focus' ? "DEEP WORK PROTOCOL" : 
+                       mode === 'overtime' ? `PEAK SCORE: ${rankState.peakScore}` : 
+                       mode === 'break' ? "RECOVERING" : "ENTERTAINMENT"}
+                  </div>
+
+                  {/* 悬浮窗同款进度条 */}
+                  {mode !== 'overtime' && (
+                    <div className="w-full h-2 bg-gray-800/50 rounded-full overflow-hidden relative border border-white/5">
+                        <div className={`h-full shadow-[0_0_20px_currentColor] transition-all duration-1000 ease-linear ${
+                            mode === 'focus' ? 'bg-emerald-500' :
+                            mode === 'break' ? 'bg-blue-500' :
+                            mode === 'gaming' ? 'bg-purple-500' :
+                            'bg-amber-500'
+                        }`} style={{ width: `${progress}%` }}></div>
+                    </div>
+                  )}
+              </div>
+
+              {/* --- 战术 L型 边角 (Canvas 画法复刻) --- */}
+              {/* 左上 */}
+              <div className={`absolute top-0 left-0 w-8 h-8 md:w-16 md:h-16 border-t-4 border-l-4 transition-colors duration-500 ${
+                  mode === 'focus' ? 'border-emerald-500' : mode === 'break' ? 'border-blue-500' : mode === 'gaming' ? 'border-purple-500' : 'border-amber-500'
+              }`}></div>
+              {/* 右上 */}
+              <div className={`absolute top-0 right-0 w-8 h-8 md:w-16 md:h-16 border-t-4 border-r-4 transition-colors duration-500 ${
+                  mode === 'focus' ? 'border-emerald-500' : mode === 'break' ? 'border-blue-500' : mode === 'gaming' ? 'border-purple-500' : 'border-amber-500'
+              }`}></div>
+              {/* 左下 */}
+              <div className={`absolute bottom-0 left-0 w-8 h-8 md:w-16 md:h-16 border-b-4 border-l-4 transition-colors duration-500 ${
+                  mode === 'focus' ? 'border-emerald-500' : mode === 'break' ? 'border-blue-500' : mode === 'gaming' ? 'border-purple-500' : 'border-amber-500'
+              }`}></div>
+              {/* 右下 */}
+              <div className={`absolute bottom-0 right-0 w-8 h-8 md:w-16 md:h-16 border-b-4 border-r-4 transition-colors duration-500 ${
+                  mode === 'focus' ? 'border-emerald-500' : mode === 'break' ? 'border-blue-500' : mode === 'gaming' ? 'border-purple-500' : 'border-amber-500'
+              }`}></div>
            </div>
         </div>
       )}
@@ -3092,8 +3152,10 @@ ${todayLogDetails}`;
             </button>
           </div>
 
-       <div className={`relative mb-8 md:mb-12 group transition-all duration-700 ease-in-out ${isZen ? 'scale-125 md:scale-[2.5]' : 'scale-90 md:scale-100 landscape:scale-75 landscape:mb-4'}`}>
-            
+{/* 修改点：当 isZen 为 true 时，添加 hidden 类来隐藏旧的圆环 */}
+        <div className={`relative mb-8 md:mb-12 group transition-all duration-700 ease-in-out ${
+            isZen ? 'hidden' : 'scale-90 md:scale-100 landscape:scale-75 landscape:mb-4'
+        }`}>            
 {/* ==================== 【3. 光晕核反应堆化】 ==================== */}
              {/* 放大4.5倍，增加模糊，放在最底层 */}
              <div className="absolute inset-0 rounded-full clock-glow pointer-events-none"
