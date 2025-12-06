@@ -2747,7 +2747,7 @@ ${todayLogDetails}`;
         onClose={() => setShowHistory(false)}
       />
 
-  {/* ==================== 【升级点 3：全局环境背景】 ==================== */}
+ {/* ==================== 【1. 背景与HUD升级】 ==================== */}
       {/* 调整：全屏微光底色，防止四周死黑 */}
       <div className="absolute inset-0 z-0 pointer-events-none bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.03)_0%,rgba(0,0,0,0)_100%)]"></div>
 
@@ -2765,24 +2765,27 @@ ${todayLogDetails}`;
         }}
       ></div>
 
-      {/* ==================== 【升级点 2：禅模式极简 HUD】 ==================== */}
-      {/* 重新设计：使用细线条 + 荧光阴影，不再是粗方块 */}
+      {/* 禅模式极简 HUD (细线条 + 荧光阴影) */}
       {isZen && (
         <div className="absolute inset-0 z-0 pointer-events-none animate-in fade-in duration-1000">
            <div className="absolute inset-6 md:inset-10 flex flex-col justify-between">
               <div className="flex justify-between">
-                {/* 左上角 */}
-                <div className={`w-8 h-8 md:w-16 md:h-16 border-t-2 border-l-2 rounded-tl-lg transition-all duration-500 shadow-[0_0_10px_currentColor] ${getBorderColor().split(' ')[0]}`}></div>
-                {/* 右上角 */}
-                <div className={`w-8 h-8 md:w-16 md:h-16 border-t-2 border-r-2 rounded-tr-lg transition-all duration-500 shadow-[0_0_10px_currentColor] ${getBorderColor().split(' ')[0]}`}></div>
+                <div className={`w-8 h-8 md:w-16 md:h-16 border-t-2 border-l-2 rounded-tl-lg transition-all duration-500 shadow-[0_0_10px_currentColor] ${getThemeColor().split(' ')[0]}`}></div>
+                <div className={`w-8 h-8 md:w-16 md:h-16 border-t-2 border-r-2 rounded-tr-lg transition-all duration-500 shadow-[0_0_10px_currentColor] ${getThemeColor().split(' ')[0]}`}></div>
               </div>
               <div className="flex justify-between">
-                {/* 左下角 */}
-                <div className={`w-8 h-8 md:w-16 md:h-16 border-b-2 border-l-2 rounded-bl-lg transition-all duration-500 shadow-[0_0_10px_currentColor] ${getBorderColor().split(' ')[0]}`}></div>
-                {/* 右下角 */}
-                <div className={`w-8 h-8 md:w-16 md:h-16 border-b-2 border-r-2 rounded-br-lg transition-all duration-500 shadow-[0_0_10px_currentColor] ${getBorderColor().split(' ')[0]}`}></div>
+                <div className={`w-8 h-8 md:w-16 md:h-16 border-b-2 border-l-2 rounded-bl-lg transition-all duration-500 shadow-[0_0_10px_currentColor] ${getThemeColor().split(' ')[0]}`}></div>
+                <div className={`w-8 h-8 md:w-16 md:h-16 border-b-2 border-r-2 rounded-br-lg transition-all duration-500 shadow-[0_0_10px_currentColor] ${getThemeColor().split(' ')[0]}`}></div>
               </div>
            </div>
+           <div className="absolute top-8 left-1/2 -translate-x-1/2 text-[10px] font-mono text-white/40 tracking-[0.8em] uppercase">System Active</div>
+           <div className="absolute bottom-8 left-1/2 -translate-x-1/2 text-[10px] font-mono text-white/30 tracking-[0.8em] uppercase flex items-center gap-4">
+              <span className="inline-block w-2 h-2 rounded-full bg-current animate-pulse"></span>
+              {mode} protocol
+              <span className="inline-block w-2 h-2 rounded-full bg-current animate-pulse"></span>
+           </div>
+        </div>
+      )}
            
            {/* HUD 装饰文字 */}
            <div className="absolute top-8 left-1/2 -translate-x-1/2 text-[10px] font-mono text-white/40 tracking-[0.8em] uppercase">System Active</div>
@@ -3098,16 +3101,18 @@ ${todayLogDetails}`;
 
        <div className={`relative mb-8 md:mb-12 group transition-all duration-700 ease-in-out ${isZen ? 'scale-125 md:scale-[2.5]' : 'scale-90 md:scale-100 landscape:scale-75 landscape:mb-4'}`}>
             
-            {/* 🌟 核心修改：光晕现在直接绑定在时钟容器内，永远跟随轮盘 */}
+{/* ==================== 【3. 光晕核反应堆化】 ==================== */}
+             {/* 放大4.5倍，增加模糊，放在最底层 */}
              <div className="absolute inset-0 rounded-full clock-glow pointer-events-none"
                   style={{
-                    background: `radial-gradient(circle, ${getGlowColor()} 0%, transparent 70%)`,
-                    transform: 'scale(1.5)',  // 稍微放大，让光晕溢出
-                    zIndex: 0, // 确保在最底层
-                    filter: 'blur(40px)' // 增加模糊，让光更柔和
+                    background: `radial-gradient(circle, ${getGlowColor()} 0%, transparent 60%)`,
+                    transform: 'scale(4.5)', 
+                    zIndex: 0, 
+                    filter: 'blur(80px)', 
+                    opacity: 0.6
                   }}
              ></div>
-
+         
             {!isZen && (
               <>
                 {/* 外层装饰圈 1 */}
