@@ -2697,7 +2697,8 @@ ${todayLogDetails}`;
           background-size: 300% 300%;
           animation: cyber-flow 3s ease infinite;
         }
-        .tactical-grid {
+        /* --- 新增：战术网格背景 --- */
+.tactical-grid {
   background-size: 40px 40px;
   background-image:
     linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
@@ -3086,7 +3087,7 @@ ${todayLogDetails}`;
               </>
             )}
             
-         {/* --- 核心计时器容器 (含 Zen Mode HUD 边框) --- */}
+       {/* --- 核心计时器容器 (含 Zen Mode HUD 边框) --- */}
         <div className={`relative mb-8 md:mb-12 group transition-all duration-700 ease-in-out ${isZen ? 'scale-110 md:scale-[1.5]' : 'scale-90 md:scale-100 landscape:scale-75 landscape:mb-4'}`}>
             
             {/* >>> 新增：禅模式 HUD 战术边框 (1:1 还原悬浮窗) <<< */}
