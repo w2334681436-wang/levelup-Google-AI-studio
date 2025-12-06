@@ -3026,24 +3026,15 @@ ${todayLogDetails}`;
             </button>
           </div>
 
-       <div className={`
-            relative mb-8 md:mb-12 group 
-            /* 1. 开启硬件加速，并使用顺滑的贝塞尔曲线 */
-            transition-transform duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)] 
-            will-change-transform
-            ${isZen ? 'scale-125 md:scale-[2.5]' : 'scale-90 md:scale-100 landscape:scale-75 landscape:mb-4'}
-        `}>
-            
-            {/* 2. 呼吸光效（保留！这不会导致卡顿，放心用） */}
-            <div className={`
-              absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full -z-10 
-              transition-all duration-1000 ease-in-out animate-[pulse_4s_ease-in-out_infinite] mix-blend-screen pointer-events-none
-              ${mode === 'focus' ? 'bg-emerald-600/30' : mode === 'break' ? 'bg-blue-600/30' : mode === 'gaming' ? 'bg-purple-600/30' : 'bg-amber-600/40'}
-              ${isZen 
-                ? 'w-[120%] h-[120%] blur-[40px] opacity-40' 
-                : 'w-[220%] h-[220%] blur-[80px] md:blur-[100px] opacity-50'
-              }
-            `}></div>
+     <div className={`
+    absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full -z-10 
+    transition-all duration-700 ease-in-out mix-blend-screen pointer-events-none
+    ${mode === 'focus' ? 'bg-emerald-600/30' : mode === 'break' ? 'bg-blue-600/30' : mode === 'gaming' ? 'bg-purple-600/30' : 'bg-amber-600/40'}
+    ${isZen 
+      ? 'w-[120%] h-[120%] blur-[40px] opacity-40'  /* 禅模式 */
+      : 'w-[220%] h-[220%] blur-[80px] md:blur-[100px] opacity-50' /* 主页模式 */
+    }
+`}></div>
 
             {/* 3. 外层装饰圈：不要用 {!isZen && ...} 删除它，而是用 opacity 隐藏它 */}
             <div className={`absolute inset-0 transition-opacity duration-500 ease-in-out ${isZen ? 'opacity-0' : 'opacity-100'}`}>
