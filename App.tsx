@@ -2663,28 +2663,7 @@ ${todayLogDetails}`;
     if (mode === 'gaming') return 'text-purple-400 border-purple-500 shadow-purple-900/50';
     if (mode === 'overtime') return 'text-amber-400 border-amber-500 shadow-amber-900/50 drop-shadow-[0_0_15px_rgba(251,191,36,0.5)]'; // 金色传说
   };
-
   
-  // 1. 获取背景动态光晕颜色
-  const getGlowColor = () => {
-    if (mode === 'focus') return '#059669'; // 专注绿
-    if (mode === 'break') return '#2563eb'; // 休息蓝
-    if (mode === 'gaming') return '#7e22ce'; // 游戏紫
-    if (mode === 'overtime') return '#d97706'; // 加时金
-    return '#059669';
-  };
-
-  // 2. 获取禅模式HUD边框颜色
-  const getBorderColor = () => {
-    if (mode === 'focus') return 'border-emerald-500 shadow-[0_0_10px_#10b981]';
-    if (mode === 'break') return 'border-blue-500 shadow-[0_0_10px_#3b82f6]';
-    if (mode === 'gaming') return 'border-purple-500 shadow-[0_0_10px_#a855f7]';
-    if (mode === 'overtime') return 'border-amber-500 shadow-[0_0_10px_#f59e0b]';
-    return 'border-emerald-500';
-  };
-  // --- [插入结束] ---
-
-
   const getBgColor = () => {
      if (mode === 'focus') return 'from-emerald-950/90 to-black';
      if (mode === 'break') return 'from-blue-950/90 to-black';
@@ -2695,10 +2674,9 @@ ${todayLogDetails}`;
   if (loading) return <div className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center font-mono animate-pulse">正在载入系统...</div>;
 
  return (
-    // 1. 修改最外层背景色为更深邃的黑 (#050505)
-    <div ref={appContainerRef} className="h-[100dvh] w-full bg-[#050505] text-gray-100 font-sans flex flex-col md:flex-row overflow-hidden relative selection:bg-cyan-500/30">
+    <div ref={appContainerRef} className={`h-[100dvh] w-full bg-[#0a0a0a] text-gray-100 font-sans flex flex-col md:flex-row overflow-hidden relative selection:bg-cyan-500/30`}>
       
-      {/* 2. 样式定义：新增呼吸动画 (animate-breathe) */}
+      {/* 1. CSS 动画样式保持不变 */}
       <style>{`
         @keyframes cyber-flow {
           0% { background-position: 0% 50%; }
@@ -2710,19 +2688,14 @@ ${todayLogDetails}`;
           background-size: 300% 300%;
           animation: cyber-flow 3s ease infinite;
         }
-        /* 新增：缓慢的背景呼吸动画 */
-        @keyframes breathe-glow {
-          0%, 100% { opacity: 0.4; transform: scale(1); }
-          50% { opacity: 0.6; transform: scale(1.1); }
-        }
-        .animate-breathe {
-          animation: breathe-glow 8s ease-in-out infinite;
-        }
       `}</style>
       
       <Toast notifications={notifications} removeNotification={removeNotification} />
 
-      {/* 3. 悬浮窗画布 (保持原样) */}
+     
+   
+      {/* 2. 【关键修改】这里是新的 PiP 画布容器 */}
+      {/* 删掉原来那个 "absolute opacity-0..." 的 div，用下面这个替换 */}
       <div 
         className="fixed pointer-events-none overflow-hidden" 
         style={{ width: '1px', height: '1px', right: '0', bottom: '0', opacity: 0.01, zIndex: -1 }}
@@ -2730,163 +2703,31 @@ ${todayLogDetails}`;
         <canvas ref={canvasRef} width={640} height={360} />
         <video ref={videoRef} muted autoPlay playsInline loop />
       </div>
-      
-      <ConfirmDialog 
-        isOpen={confirmState.isOpen} 
-        title={confirmState.title} 
-        message={confirmState.message} 
-        onConfirm={confirmState.onConfirm} 
-        onCancel={closeConfirm}
-        isDangerous={confirmState.isDangerous}
-        confirmText={confirmState.confirmText}
-      />
+      
+      <ConfirmDialog 
+        isOpen={confirmState.isOpen} 
+        title={confirmState.title} 
+        message={confirmState.message} 
+        onConfirm={confirmState.onConfirm} 
+        onCancel={closeConfirm}
+        isDangerous={confirmState.isDangerous}
+        confirmText={confirmState.confirmText}
+      />
 
-      <HistoryView 
-        history={history}
-        isOpen={showHistory}
-        onClose={() => setShowHistory(false)}
-      />
+      <HistoryView 
+        history={history}
+        isOpen={showHistory}
+        onClose={() => setShowHistory(false)}
+      />
 
- {/* ==================== 【1. 背景与HUD升级】 ==================== */}
-      {/* 调整：全屏微光底色，防止四周死黑 */}
-      <div className="absolute inset-0 z-0 pointer-events-none bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.03)_0%,rgba(0,0,0,0)_100%)]"></div>
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(20,20,40,0.4),transparent_70%)] pointer-events-none"></div>
+      <div className="absolute inset-0 opacity-5 pointer-events-none mix-blend-overlay" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")` }}></div>
 
-      {/* 战术网格 (全局背景) */}
-      <div className="absolute inset-0 z-0 pointer-events-none opacity-20"
-        style={{
-          backgroundImage: `
-            linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px)
-          `,
-          backgroundSize: '60px 60px',
-          // 修改 mask：扩大可见范围到 130%，彻底消除四周黑边
-          maskImage: 'radial-gradient(circle at center, black 40%, transparent 130%)',
-          WebkitMaskImage: 'radial-gradient(circle at center, black 40%, transparent 130%)'
-        }}
-      ></div>
-
- {/* ==================== 禅模式：SVG 战术 HUD (完美复刻悬浮窗) ==================== */}
-      {isZen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black">
-           {/* 1. 动态背景层：微光呼吸 */}
-           <div className={`absolute inset-0 opacity-20 animate-pulse ${
-               mode === 'focus' ? 'bg-emerald-900' :
-               mode === 'break' ? 'bg-blue-900' :
-               mode === 'gaming' ? 'bg-purple-900' :
-               'bg-amber-900'
-           }`}></div>
-           
-           {/* 2. 核心 SVG 战术层 (替换原本丑陋的 div 边框) */}
-           {/* 这里用 SVG 画线，能做到和 Canvas 一模一样的锐利质感 */}
-           <svg className="absolute inset-0 w-full h-full p-4 md:p-10 pointer-events-none" style={{ filter: 'drop-shadow(0 0 10px rgba(currentColor, 0.5))' }}>
-              <defs>
-                {/* 定义渐变，让线条有科技感 */}
-                <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="currentColor" stopOpacity="0.1" />
-                  <stop offset="50%" stopColor="currentColor" stopOpacity="0.8" />
-                  <stop offset="100%" stopColor="currentColor" stopOpacity="0.1" />
-                </linearGradient>
-              </defs>
-              
-              <g className={`transition-colors duration-1000 ${
-                  mode === 'focus' ? 'text-emerald-500' :
-                  mode === 'break' ? 'text-blue-500' :
-                  mode === 'gaming' ? 'text-purple-500' :
-                  'text-amber-500'
-              }`}>
-                  {/* --- 战术边角 (L-Brackets) --- */}
-                  {/* 左上 */}
-                  <path d="M40,20 L20,20 L20,40" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="square" />
-                  {/* 右上 */}
-                  <path d="Mcalc(100% - 40px),20 Lcalc(100% - 20px),20 Lcalc(100% - 20px),40" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="square" />
-                  {/* 左下 */}
-                  <path d="M20,calc(100% - 40px) L20,calc(100% - 20px) L40,calc(100% - 20px)" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="square" />
-                  {/* 右下 */}
-                  <path d="Mcalc(100% - 20px),calc(100% - 40px) Lcalc(100% - 20px),calc(100% - 20px) Lcalc(100% - 40px),calc(100% - 20px)" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="square" />
-
-                  {/* --- 细连接线 (Thin Borders) --- */}
-                  {/* 用 rect 模拟细边框，透明度降低，复刻 Canvas 的 globalAlpha=0.3 */}
-                  <rect x="20" y="20" width="calc(100% - 40px)" height="calc(100% - 40px)" fill="none" stroke="currentColor" strokeWidth="1" opacity="0.3" />
-              </g>
-           </svg>
-
-           {/* 3. 内容容器 */}
-           <div className="relative z-10 flex flex-col items-center justify-between h-full py-20 md:py-32 w-full max-w-5xl">
-              
-              {/* 顶部：状态指示 */}
-              <div className={`flex items-center gap-4 text-xl md:text-2xl font-bold tracking-[0.3em] uppercase animate-in slide-in-from-top-10 duration-1000 ${
-                  mode === 'focus' ? 'text-emerald-400' :
-                  mode === 'break' ? 'text-blue-400' :
-                  mode === 'gaming' ? 'text-purple-400' :
-                  'text-amber-400'
-              }`}>
-                 {/* 装饰点 */}
-                 <div className="w-2 h-2 bg-current rounded-full animate-ping"></div>
-                 <span>
-                    {mode === 'focus' ? (timeLeft <= 0 ? "⚠️ 目标达成" : "⚡ 对局进行中...") : 
-                     mode === 'overtime' ? "🏆 巅峰加时赛" :
-                     mode === 'break' ? "💤 泉水回血" : "🎮 娱乐模式"}
-                 </span>
-                 <div className="w-2 h-2 bg-current rounded-full animate-ping"></div>
-              </div>
-
-              {/* 中部：核心时间 (超大数字) */}
-              <div className={`font-mono font-bold text-[18vw] md:text-[12rem] leading-none tracking-tighter tabular-nums drop-shadow-2xl select-none scale-y-110 transition-all duration-300 ${
-                  mode === 'overtime' ? 'text-amber-400 drop-shadow-[0_0_50px_rgba(245,158,11,0.5)]' : 'text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.2)]'
-              }`}>
-                 {mode === 'overtime' ? `+${formatTime(timeLeft)}` : formatTime(timeLeft)}
-              </div>
-
-              {/* 底部：进度条与协议文案 */}
-              <div className="w-full px-10 md:px-20 flex flex-col gap-6">
-                  <div className={`text-center font-bold tracking-[0.5em] text-sm md:text-lg opacity-60 uppercase ${
-                      mode === 'focus' ? 'text-emerald-500' :
-                      mode === 'break' ? 'text-blue-500' :
-                      mode === 'gaming' ? 'text-purple-500' :
-                      'text-amber-500'
-                  }`}>
-                      {mode === 'focus' ? "DEEP WORK PROTOCOL" : 
-                       mode === 'overtime' ? `PEAK SCORE: ${rankState.peakScore}` : 
-                       mode === 'break' ? "SYSTEM RECHARGE" : "ENTERTAINMENT MODE"}
-                  </div>
-
-                  {/* 进度条 (复刻 Canvas 的绘制风格) */}
-                  {mode !== 'overtime' && (
-                    <div className="w-full h-1.5 bg-gray-800 relative overflow-hidden">
-                        {/* 进度填充 */}
-                        <div className={`absolute top-0 left-0 h-full transition-all duration-1000 ease-linear shadow-[0_0_20px_currentColor] ${
-                            mode === 'focus' ? 'bg-emerald-500' :
-                            mode === 'break' ? 'bg-blue-500' :
-                            mode === 'gaming' ? 'bg-purple-500' :
-                            'bg-amber-500'
-                        }`} style={{ width: `${progress}%` }}></div>
-                        
-                        {/* 装饰刻度 (模拟 Canvas 里的 for循环 rect) */}
-                        <div className="absolute inset-0 w-full h-full flex justify-between px-1">
-                           {[...Array(20)].map((_, i) => (
-                             <div key={i} className="w-px h-full bg-black/50"></div>
-                           ))}
-                        </div>
-                    </div>
-                  )}
-              </div>
-           </div>
-
-           {/* 退出按钮 (仅 Hover 显示) */}
-           <button 
-             onClick={() => setIsZen(false)}
-             className="absolute top-8 right-8 text-white/20 hover:text-white transition-colors z-50 p-2"
-           >
-             <Minimize2 className="w-8 h-8" />
-           </button>
-        </div>
-      )}
-          
-
-{/* --- 左侧边栏 (动画优化：duration-500 + ease-out 更轻快) --- */}
-      <div className={`hidden md:flex flex-col bg-[#111116]/80 backdrop-blur-md gap-4 z-20 h-full relative group scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${isZen ? 'w-0 min-w-0 p-0 opacity-0 border-none pointer-events-none overflow-hidden' : 'w-96 p-6 border-r border-gray-800 opacity-100 overflow-y-auto'}`}>
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-900/10 via-purple-900/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
-        
+            
+      {/* --- 左侧边栏 (动画优化：duration-500 + ease-out 更轻快) --- */}
+      <div className={`hidden md:flex flex-col bg-[#111116] gap-4 z-20 h-full relative group scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${isZen ? 'w-0 min-w-0 p-0 opacity-0 border-none pointer-events-none overflow-hidden' : 'w-96 p-6 border-r border-gray-800 opacity-100 overflow-y-auto'}`}>
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-900/10 via-purple-900/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
+        
         {/* 内容容器：min-w 保持内容宽度，防止挤压 */}
         <div className="min-w-[340px] flex flex-col gap-4">
             <div className="flex justify-between items-start relative z-10 flex-shrink-0">
@@ -2993,33 +2834,31 @@ ${todayLogDetails}`;
               {todayStats.logs && todayStats.logs.slice().reverse().map((log, i) => (
                 <div key={i} className="bg-[#1a1a20] p-3 rounded border-l-2 border-emerald-500/50 text-xs text-gray-300 relative group hover:bg-[#222228] transition-colors">
                   <div className="flex justify-between text-gray-500 mb-1"><span className="font-mono text-emerald-600">{log.time}</span><span className="text-emerald-500/80">+{log.duration}m XP</span></div>
-               <div className="truncate">{typeof log.content === 'string' ? log.content : 'Log Entry'}</div>
-                </div>
-              ))}
-            </div>
-        </div>
-      </div>
+                  <div className="truncate">{typeof log.content === 'string' ? log.content : 'Log Entry'}</div>
+                </div>
+              ))}
+            </div>
+        </div>
+      </div>
 
-      {/* --- 移动端底部导航栏 (修复锚点) --- */}
-      <MobileNav 
-        mode={mode}
-        switchMode={switchMode}
-        startAICoach={startAICoach}
-        showSettings={showSettings}
-        setShowSettings={setShowSettings}
-        todayStats={todayStats}
-        activeView={activeView}
-        setActiveView={setActiveView}
-        openManualLog={openManualLog}
-        unreadAIMessages={unreadAIMessages}
-        showHistory={showHistory}
-        setShowHistory={setShowHistory}
-      />
+      <MobileNav 
+        mode={mode}
+        switchMode={switchMode}
+        startAICoach={startAICoach}
+        showSettings={showSettings}
+        setShowSettings={setShowSettings}
+        todayStats={todayStats}
+        activeView={activeView}
+        setActiveView={setActiveView}
+        openManualLog={openManualLog}
+        unreadAIMessages={unreadAIMessages}
+        showHistory={showHistory}
+        setShowHistory={setShowHistory}
+      />
 
-      {/* --- 主内容区域容器 --- */}
-      <div className="flex-1 flex flex-col items-center justify-center p-4 relative transition-all duration-1000 overflow-hidden pb-20 md:pb-4 min-h-[500px] md:min-h-0 overflow-y-auto md:overflow-y-hidden">
-        
-        {mode === 'overtime' && (
+      <div className={`flex-1 flex flex-col items-center justify-center p-4 relative bg-gradient-to-br ${getBgColor()} transition-colors duration-1000 overflow-hidden pb-20 md:pb-4 min-h-[500px] md:min-h-0 overflow-y-auto md:overflow-y-hidden`}>
+
+{mode === 'overtime' && (
        <div className="absolute inset-0 z-0 pointer-events-none">
            <GoldParticles />
            {/* 加一层径向光晕，让粒子更明显，同时避免背景死黑 */}
@@ -3187,27 +3026,11 @@ ${todayLogDetails}`;
             </button>
           </div>
 
-{/* 修改点：当 isZen 为 true 时，添加 hidden 类来隐藏旧的圆环 */}
-        <div className={`relative mb-8 md:mb-12 group transition-all duration-700 ease-in-out ${
-            isZen ? 'hidden' : 'scale-90 md:scale-100 landscape:scale-75 landscape:mb-4'
-        }`}>            
-{/* ==================== 【3. 光晕核反应堆化】 ==================== */}
-             {/* 放大4.5倍，增加模糊，放在最底层 */}
-             <div className="absolute inset-0 rounded-full clock-glow pointer-events-none"
-                  style={{
-                    background: `radial-gradient(circle, ${getGlowColor()} 0%, transparent 60%)`,
-                    transform: 'scale(4.5)', 
-                    zIndex: 0, 
-                    filter: 'blur(80px)', 
-                    opacity: 0.6
-                  }}
-             ></div>
-         
+        <div className={`relative mb-8 md:mb-12 group transition-all duration-700 ease-in-out ${isZen ? 'scale-125 md:scale-[2.5]' : 'scale-90 md:scale-100 landscape:scale-75 landscape:mb-4'}`}>
             {!isZen && (
               <>
                 {/* 外层装饰圈 1 */}
-                <div className="absolute inset-0 rounded-full border-4 border-gray-800/50 scale-110 z-0"></div>
-                
+                <div className="absolute inset-0 rounded-full border-4 border-gray-800/50 scale-110"></div>
                 {/* 外层装饰圈 2 (发光模糊) */}
                 <div className={`absolute inset-0 rounded-full border-4 opacity-20 blur-md transition-all duration-500 ${(getThemeColor() || '').split(' ')[0].replace('text', 'border')}`}></div>
               </>
@@ -3687,267 +3510,266 @@ ${todayLogDetails}`;
         </div>
       )}
 
-   {showSettings && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-0 md:p-4 animate-in fade-in zoom-in duration-200">
-          <div className="bg-[#111116] w-full h-full md:max-w-xl md:h-[85vh] md:rounded-3xl shadow-2xl flex flex-col relative overflow-hidden border-0 md:border border-gray-800 p-4 md:p-8">
-            <h2 className="text-xl md:text-2xl font-bold text-white mb-4 md:mb-6 flex items-center gap-2 mt-4 md:mt-0"><Settings className="w-6 h-6 text-cyan-400"/> 系统设置与配置</h2>
-            
-            {/* --- 移动端通知权限手动触发器 --- */}
-            {Notification.permission !== 'granted' && (
-              <div className="mb-4 bg-amber-500/20 border border-amber-500/50 p-3 rounded-xl flex items-center justify-between animate-pulse">
-                <div className="flex items-center gap-2 text-amber-400 text-xs font-bold">
-                  <AlertTriangle className="w-4 h-4" />
-                  <span>移动端需手动开启通知权限</span>
-                </div>
-                <button 
-                  onClick={() => {
-                    Notification.requestPermission().then(perm => {
-                      if(perm === 'granted') {
-                        addNotification("通知权限已开启！快切后台试试", "success");
-                        sendNotification("测试成功", "你的手机可以收到通知了！");
-                      } else {
-                        addNotification("权限被拒绝，请在手机系统设置中允许浏览器通知", "error");
-                      }
-                    });
-                  }}
-                  className="bg-amber-500 text-black text-xs font-bold px-3 py-1.5 rounded-lg shadow-lg active:scale-95 transition"
-                >
-                  开启权限
-                </button>
-              </div>
-            )}
-
-            <div className="flex-1 overflow-y-auto space-y-6 pb-20 md:pb-0">
-              
-              {/* Chat Bubbles Color */}
-              <div className="bg-gray-800/30 p-4 rounded-xl border border-gray-700/50">
-                <h3 className="text-gray-300 font-bold mb-3 flex items-center gap-2 text-sm"><Palette className="w-4 h-4 text-purple-400"/> 对话气泡颜色</h3>
-                <div className="flex gap-4">
-                  <div className="flex-1">
-                    <label className="text-xs text-gray-500 block mb-2">用户 (我)</label>
-                    <div className="flex items-center gap-2">
-                      <input type="color" value={userBubbleColor} onChange={(e) => saveBubbleColors(e.target.value, aiBubbleColor)} className="w-8 h-8 rounded cursor-pointer border-none p-0 bg-transparent"/>
-                      <span className="text-xs font-mono text-gray-400">{userBubbleColor}</span>
+      {showSettings && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-0 md:p-4 animate-in fade-in zoom-in duration-200">
+            <div className="bg-[#111116] w-full h-full md:max-w-xl md:h-[85vh] md:rounded-3xl shadow-2xl flex flex-col relative overflow-hidden border-0 md:border border-gray-800 p-4 md:p-8">
+               <h2 className="text-xl md:text-2xl font-bold text-white mb-4 md:mb-6 flex items-center gap-2 mt-4 md:mt-0"><Settings className="w-6 h-6 text-cyan-400"/> 系统设置与配置</h2>
+              {/* --- 移动端通知权限手动触发器 --- */}
+                {Notification.permission !== 'granted' && (
+                  <div className="mb-4 bg-amber-500/20 border border-amber-500/50 p-3 rounded-xl flex items-center justify-between animate-pulse">
+                    <div className="flex items-center gap-2 text-amber-400 text-xs font-bold">
+                      <AlertTriangle className="w-4 h-4" />
+                      <span>移动端需手动开启通知权限</span>
                     </div>
-                  </div>
-                  <div className="flex-1">
-                    <label className="text-xs text-gray-500 block mb-2">AI 导师</label>
-                    <div className="flex items-center gap-2">
-                      <input type="color" value={aiBubbleColor} onChange={(e) => saveBubbleColors(userBubbleColor, e.target.value)} className="w-8 h-8 rounded cursor-pointer border-none p-0 bg-transparent"/>
-                      <span className="text-xs font-mono text-gray-400">{aiBubbleColor}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-purple-900/20 p-4 rounded-xl border border-purple-500/30">
-                <h3 className="text-purple-400 font-bold mb-3 flex items-center gap-2 text-sm"><Sparkles className="w-4 h-4"/> AI 导师人设定制</h3>
-                <textarea 
-                  value={customPersona}
-                  onChange={(e) => saveAISettings(apiKey, apiBaseUrl, apiModel, selectedProvider, e.target.value)}
-                  placeholder={DEFAULT_PERSONA}
-                  className="w-full bg-black/50 border border-purple-500/30 rounded-lg p-3 text-white outline-none focus:border-purple-500 text-sm min-h-[80px] resize-none"
-                />
-              </div>
-
-              {/* 新增：个人背景设置 */}
-              <div className="bg-indigo-900/20 p-4 rounded-xl border border-indigo-500/30">
-                <h3 className="text-indigo-400 font-bold mb-3 flex items-center gap-2 text-sm"><User className="w-4 h-4"/> 个人背景档案</h3>
-                <textarea 
-                  value={customUserBackground}
-                  onChange={(e) => {
-                    setCustomUserBackground(e.target.value);
-                    localStorage.setItem('user_background', e.target.value);
-                  }}
-                  placeholder="告诉导师你的背景（例如：双非跨考985、英语基础薄弱、在职备考...）"
-                  className="w-full bg-black/50 border border-indigo-500/30 rounded-lg p-3 text-white outline-none focus:border-indigo-500 text-sm min-h-[80px] resize-none"
-                />
-              </div>
-
-              {/* 新增：阶段手动调整 */}
-              <div className="bg-orange-900/20 p-4 rounded-xl border border-orange-500/30">
-                <div className="flex justify-between items-center mb-3">
-                  <h3 className="text-orange-400 font-bold flex items-center gap-2 text-sm"><Target className="w-4 h-4"/> 当前备考阶段</h3>
-                  <button onClick={() => {
-                    localStorage.removeItem('manual_stage');
-                    setStage(getStageInfo());
-                    addNotification("已恢复为自动时间判断", "success");
-                  }} className="text-xs text-gray-400 underline hover:text-white transition">恢复自动 (根据时间)</button>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { name: "基础夯实期", desc: "地毯式复习 / 英语单词", targetHours: 7, color: "text-emerald-400", borderColor: "border-emerald-500", bg: "bg-emerald-500/10" },
-                    { name: "强化提升期", desc: "海量刷题 / 攻克难点", targetHours: 9, color: "text-yellow-400", borderColor: "border-yellow-500", bg: "bg-yellow-500/10" },
-                    { name: "真题实战期", desc: "真题模拟 / 查缺补漏", targetHours: 10, color: "text-orange-400", borderColor: "border-orange-500", bg: "bg-orange-500/10" },
-                    { name: "全真模拟期", desc: "心态调整 / 考场适应", targetHours: 6, color: "text-cyan-400", borderColor: "border-cyan-500", bg: "bg-cyan-500/10" },
-                    { name: "终极冲刺期", desc: "背水一战 / 回归基础", targetHours: 11, color: "text-pink-500", borderColor: "border-pink-500", bg: "bg-pink-500/10" }
-                  ].map((s) => (
                     <button 
-                      key={s.name}
                       onClick={() => {
-                        setStage(s);
-                        localStorage.setItem('manual_stage', JSON.stringify(s));
+                        Notification.requestPermission().then(perm => {
+                          if(perm === 'granted') {
+                            addNotification("通知权限已开启！快切后台试试", "success");
+                            sendNotification("测试成功", "你的手机可以收到通知了！");
+                          } else {
+                            addNotification("权限被拒绝，请在手机系统设置中允许浏览器通知", "error");
+                          }
+                        });
                       }}
-                      className={`p-2 rounded-lg border text-left transition-all ${stage.name === s.name ? `${s.bg} ${s.borderColor} ring-1 ring-offset-1 ring-offset-[#111] ring-white` : 'bg-black/30 border-gray-700 hover:bg-gray-800'}`}
+                      className="bg-amber-500 text-black text-xs font-bold px-3 py-1.5 rounded-lg shadow-lg active:scale-95 transition"
                     >
-                      <div className={`text-xs font-bold ${s.color}`}>{s.name}</div>
-                      <div className="text-[10px] text-gray-500 truncate">{s.desc}</div>
+                      开启权限
                     </button>
-                  ))}
-                </div>
-              </div>
+                  </div>
+                )}
+               <div className="flex-1 overflow-y-auto space-y-6 pb-20 md:pb-0">
+                  
+                  {/* Chat Bubbles Color */}
+                  <div className="bg-gray-800/30 p-4 rounded-xl border border-gray-700/50">
+                    <h3 className="text-gray-300 font-bold mb-3 flex items-center gap-2 text-sm"><Palette className="w-4 h-4 text-purple-400"/> 对话气泡颜色</h3>
+                    <div className="flex gap-4">
+                       <div className="flex-1">
+                          <label className="text-xs text-gray-500 block mb-2">用户 (我)</label>
+                          <div className="flex items-center gap-2">
+                             <input type="color" value={userBubbleColor} onChange={(e) => saveBubbleColors(e.target.value, aiBubbleColor)} className="w-8 h-8 rounded cursor-pointer border-none p-0 bg-transparent"/>
+                             <span className="text-xs font-mono text-gray-400">{userBubbleColor}</span>
+                          </div>
+                       </div>
+                       <div className="flex-1">
+                          <label className="text-xs text-gray-500 block mb-2">AI 导师</label>
+                          <div className="flex items-center gap-2">
+                             <input type="color" value={aiBubbleColor} onChange={(e) => saveBubbleColors(userBubbleColor, e.target.value)} className="w-8 h-8 rounded cursor-pointer border-none p-0 bg-transparent"/>
+                             <span className="text-xs font-mono text-gray-400">{aiBubbleColor}</span>
+                          </div>
+                       </div>
+                    </div>
+                  </div>
 
-              <div className="bg-blue-900/20 p-4 rounded-xl border border-blue-500/30">
-                <h3 className="text-blue-400 font-bold mb-3 flex items-center gap-2 text-sm"><BrainCircuit className="w-4 h-4"/> 回复模式</h3>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-white text-sm">深度思考模式</div>
-                    <div className="text-gray-400 text-xs">开启后回复更详细准确，但速度较慢</div>
-                  </div>
-                  <button 
-                    onClick={() => saveDeepThinkingMode(!deepThinkingMode)}
-                    className={`w-12 h-6 rounded-full transition-colors ${
-                      deepThinkingMode ? 'bg-blue-500' : 'bg-gray-600'
-                    }`}
-                  >
-                    <div className={`w-5 h-5 bg-white rounded-full transform transition-transform ${
-                      deepThinkingMode ? 'translate-x-7' : 'translate-x-1'
-                    }`} />
-                  </button>
-                </div>
-              </div>
+                  <div className="bg-purple-900/20 p-4 rounded-xl border border-purple-500/30">
+                    <h3 className="text-purple-400 font-bold mb-3 flex items-center gap-2 text-sm"><Sparkles className="w-4 h-4"/> AI 导师人设定制</h3>
+                    <textarea 
+                      value={customPersona}
+                      onChange={(e) => saveAISettings(apiKey, apiBaseUrl, apiModel, selectedProvider, e.target.value)}
+                      placeholder={DEFAULT_PERSONA}
+                      className="w-full bg-black/50 border border-purple-500/30 rounded-lg p-3 text-white outline-none focus:border-purple-500 text-sm min-h-[80px] resize-none"
+                    />
+                  </div>
+                 {/* 新增：个人背景设置 */}
+                  <div className="bg-indigo-900/20 p-4 rounded-xl border border-indigo-500/30">
+                    <h3 className="text-indigo-400 font-bold mb-3 flex items-center gap-2 text-sm"><User className="w-4 h-4"/> 个人背景档案</h3>
+                    <textarea 
+                      value={customUserBackground}
+                      onChange={(e) => {
+                        setCustomUserBackground(e.target.value);
+                        localStorage.setItem('user_background', e.target.value);
+                      }}
+                      placeholder="告诉导师你的背景（例如：双非跨考985、英语基础薄弱、在职备考...）"
+                      className="w-full bg-black/50 border border-indigo-500/30 rounded-lg p-3 text-white outline-none focus:border-indigo-500 text-sm min-h-[80px] resize-none"
+                    />
+                  </div>
 
-              <div className="bg-emerald-900/20 p-4 rounded-xl border border-emerald-500/30">
-                  <div className="flex justify-between items-center mb-2">
-                    <h3 className="text-emerald-400 font-bold flex items-center gap-2 text-sm"><Clock className="w-4 h-4"/> 每日目标时长 (小时)</h3>
-                    {customTargetHours && <button onClick={() => saveTargetHours(null)} className="text-xs text-gray-400 underline hover:text-white transition">恢复默认</button>}
-                  </div>
-                  <input 
-                    type="range" 
-                    min="1" max="16" step="0.5"
-                    value={customTargetHours || stage.targetHours}
-                    onChange={(e) => saveTargetHours(parseFloat(e.target.value))}
-                    className="w-full accent-emerald-500 cursor-pointer h-2 bg-gray-700 rounded-lg appearance-none"
-                  />
-                  <div className="flex justify-between text-gray-500 text-xs mt-2 font-mono">
-                    <span>1h</span>
-                    <span className="text-emerald-400 font-bold">{customTargetHours || stage.targetHours}h</span>
-                    <span>16h</span>
-                  </div>
-              </div>
+                  {/* 新增：阶段手动调整 */}
+                  <div className="bg-orange-900/20 p-4 rounded-xl border border-orange-500/30">
+                    <div className="flex justify-between items-center mb-3">
+                      <h3 className="text-orange-400 font-bold flex items-center gap-2 text-sm"><Target className="w-4 h-4"/> 当前备考阶段</h3>
+                      <button onClick={() => {
+                        localStorage.removeItem('manual_stage');
+                        setStage(getStageInfo());
+                        addNotification("已恢复为自动时间判断", "success");
+                      }} className="text-xs text-gray-400 underline hover:text-white transition">恢复自动 (根据时间)</button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { name: "基础夯实期", desc: "地毯式复习 / 英语单词", targetHours: 7, color: "text-emerald-400", borderColor: "border-emerald-500", bg: "bg-emerald-500/10" },
+                        { name: "强化提升期", desc: "海量刷题 / 攻克难点", targetHours: 9, color: "text-yellow-400", borderColor: "border-yellow-500", bg: "bg-yellow-500/10" },
+                        { name: "真题实战期", desc: "真题模拟 / 查缺补漏", targetHours: 10, color: "text-orange-400", borderColor: "border-orange-500", bg: "bg-orange-500/10" },
+                        { name: "全真模拟期", desc: "心态调整 / 考场适应", targetHours: 6, color: "text-cyan-400", borderColor: "border-cyan-500", bg: "bg-cyan-500/10" },
+                        { name: "终极冲刺期", desc: "背水一战 / 回归基础", targetHours: 11, color: "text-pink-500", borderColor: "border-pink-500", bg: "bg-pink-500/10" }
+                      ].map((s) => (
+                        <button 
+                          key={s.name}
+                          onClick={() => {
+                            setStage(s);
+                            localStorage.setItem('manual_stage', JSON.stringify(s));
+                          }}
+                          className={`p-2 rounded-lg border text-left transition-all ${stage.name === s.name ? `${s.bg} ${s.borderColor} ring-1 ring-offset-1 ring-offset-[#111] ring-white` : 'bg-black/30 border-gray-700 hover:bg-gray-800'}`}
+                        >
+                          <div className={`text-xs font-bold ${s.color}`}>{s.name}</div>
+                          <div className="text-[10px] text-gray-500 truncate">{s.desc}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
 
-              <div className="bg-gray-800/50 p-4 rounded-xl border border-gray-700">
-                <h3 className="text-gray-400 font-bold mb-3 flex items-center gap-2 text-sm"><BrainCircuit className="w-4 h-4 text-cyan-500"/> AI 模型配置</h3>
-                <div className="space-y-3 text-sm">
-                  <div className="mb-2">
-                    <label className="text-gray-500 block mb-1">服务商</label>
-                    <div className="flex items-center bg-black/50 border border-gray-600 rounded-lg px-3 relative">
-                      <select value={selectedProvider} onChange={(e) => {
-                        const p = API_PROVIDERS.find(x => x.id === e.target.value);
-                        if (p) saveAISettings(apiKey, p.url, p.defaultModel, p.id, customPersona);
-                        else setSelectedProvider('custom');
-                      }} className="w-full bg-transparent py-3 text-white outline-none border-none appearance-none z-10 font-mono">
-                        {API_PROVIDERS.map(p => (
-                          <option key={p.id} value={p.id} className="bg-gray-900">
-                            {p.name} {p.supportsVision ? '📷' : ''}
-                          </option>
-                        ))}
-                      </select>
-                      <ChevronDown className="w-4 h-4 text-gray-500 absolute right-3" />
-                    </div>
-                  </div>
+                  <div className="bg-blue-900/20 p-4 rounded-xl border border-blue-500/30">
+                    <h3 className="text-blue-400 font-bold mb-3 flex items-center gap-2 text-sm"><BrainCircuit className="w-4 h-4"/> 回复模式</h3>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-white text-sm">深度思考模式</div>
+                        <div className="text-gray-400 text-xs">开启后回复更详细准确，但速度较慢</div>
+                      </div>
+                      <button 
+                        onClick={() => saveDeepThinkingMode(!deepThinkingMode)}
+                        className={`w-12 h-6 rounded-full transition-colors ${
+                          deepThinkingMode ? 'bg-blue-500' : 'bg-gray-600'
+                        }`}
+                      >
+                        <div className={`w-5 h-5 bg-white rounded-full transform transition-transform ${
+                          deepThinkingMode ? 'translate-x-7' : 'translate-x-1'
+                        }`} />
+                      </button>
+                    </div>
+                  </div>
 
-                  {/* URL Input: Only shown if custom is selected */}
-                  {selectedProvider === 'custom' && (
-                    <div className="mb-2 animate-in fade-in slide-in-from-top-1">
-                      <label className="text-cyan-400 block mb-1">自定义 URL (Base URL)</label>
-                      <input type="text" placeholder="https://api.example.com/v1" value={apiBaseUrl} onChange={(e) => saveAISettings(apiKey, e.target.value, apiModel, selectedProvider, customPersona)} className="w-full bg-black/50 border border-cyan-500/50 rounded-lg p-3 text-white outline-none focus:border-cyan-500 font-mono"/>
-                    </div>
-                  )}
-                  
-                  <div className="mb-2">
-                    <label className="text-gray-500 block mb-1">API Key</label>
-                    <input type="password" placeholder="sk-..." value={apiKey} onChange={(e) => saveAISettings(e.target.value, apiBaseUrl, apiModel, selectedProvider, customPersona)} className="w-full bg-black/50 border border-gray-600 rounded-lg p-3 text-white outline-none focus:border-cyan-500 font-mono"/>
-                  </div>
-                  <div className="mb-2 relative">
-                    <div className="flex justify-between items-center mb-1">
-                      <label className="text-gray-500">模型名称</label>
-                      <button onClick={fetchAvailableModels} disabled={isFetchingModels} className="text-[10px] bg-cyan-900/30 text-cyan-300 border border-cyan-800/50 px-2 py-1 rounded flex items-center gap-1 hover:bg-cyan-800/50 transition-colors">{isFetchingModels ? <RefreshCw className="w-3 h-3 animate-spin"/> : <List className="w-3 h-3"/>} 获取列表</button>
-                    </div>
-                    <div className="flex items-center bg-black/50 border border-gray-600 rounded-lg px-3 relative z-50">
-                      <Cpu className="w-4 h-4 text-gray-500 mr-2 flex-shrink-0" />
-                      <input type="text" value={apiModel} onChange={(e) => { setApiModel(e.target.value); setIsModelListOpen(true); setModelSearch(e.target.value); }} onFocus={() => setIsModelListOpen(true)} className="w-full bg-transparent py-3 text-white outline-none font-mono" placeholder="输入或选择模型"/>
-                      <button onClick={() => setIsModelListOpen(!isModelListOpen)}><ChevronDown className="w-4 h-4 text-gray-500" /></button>
-                    </div>
-                    
-                    {isModelListOpen && availableModels.length > 0 && (
-                      <div className="absolute top-full left-0 w-full bg-[#1a1a20] border border-gray-700 rounded-b-lg shadow-xl max-h-40 overflow-y-auto z-[100] mt-1 font-mono">
-                        <div className="sticky top-0 bg-[#1a1a20] p-2 border-b border-gray-700 flex items-center gap-2">
-                          <Search className="w-3 h-3 text-gray-500" />
-                          <input type="text" value={modelSearch} onChange={(e) => setModelSearch(e.target.value)} placeholder="搜索..." className="w-full bg-transparent text-white outline-none text-xs"/>
-                        </div>
-                        {availableModels.filter(m => m.toLowerCase().includes(modelSearch.toLowerCase())).map(m => (
-                          <div key={m} onClick={() => { setApiModel(m); saveAISettings(apiKey, apiBaseUrl, m, selectedProvider, customPersona); setIsModelListOpen(false); }} className="px-3 py-2 hover:bg-cyan-900/30 cursor-pointer truncate text-gray-300 hover:text-cyan-400 transition-colors text-xs">{m}</div>
-                        ))}
+                  <div className="bg-emerald-900/20 p-4 rounded-xl border border-emerald-500/30">
+                     <div className="flex justify-between items-center mb-2">
+                       <h3 className="text-emerald-400 font-bold flex items-center gap-2 text-sm"><Clock className="w-4 h-4"/> 每日目标时长 (小时)</h3>
+                       {customTargetHours && <button onClick={() => saveTargetHours(null)} className="text-xs text-gray-400 underline hover:text-white transition">恢复默认</button>}
+                     </div>
+                     <input 
+                       type="range" 
+                       min="1" max="16" step="0.5"
+                       value={customTargetHours || stage.targetHours}
+                       onChange={(e) => saveTargetHours(parseFloat(e.target.value))}
+                       className="w-full accent-emerald-500 cursor-pointer h-2 bg-gray-700 rounded-lg appearance-none"
+                     />
+                     <div className="flex justify-between text-gray-500 text-xs mt-2 font-mono">
+                       <span>1h</span>
+                       <span className="text-emerald-400 font-bold">{customTargetHours || stage.targetHours}h</span>
+                       <span>16h</span>
+                     </div>
+                  </div>
+
+                  <div className="bg-gray-800/50 p-4 rounded-xl border border-gray-700">
+                    <h3 className="text-gray-400 font-bold mb-3 flex items-center gap-2 text-sm"><BrainCircuit className="w-4 h-4 text-cyan-500"/> AI 模型配置</h3>
+                    <div className="space-y-3 text-sm">
+                      <div className="mb-2">
+                        <label className="text-gray-500 block mb-1">服务商</label>
+                        <div className="flex items-center bg-black/50 border border-gray-600 rounded-lg px-3 relative">
+                          <select value={selectedProvider} onChange={(e) => {
+                            const p = API_PROVIDERS.find(x => x.id === e.target.value);
+                            if (p) saveAISettings(apiKey, p.url, p.defaultModel, p.id, customPersona);
+                            else setSelectedProvider('custom');
+                          }} className="w-full bg-transparent py-3 text-white outline-none border-none appearance-none z-10 font-mono">
+                            {API_PROVIDERS.map(p => (
+                              <option key={p.id} value={p.id} className="bg-gray-900">
+                                {p.name} {p.supportsVision ? '📷' : ''}
+                              </option>
+                            ))}
+                          </select>
+                          <ChevronDown className="w-4 h-4 text-gray-500 absolute right-3" />
+                        </div>
+                      </div>
+
+                      {/* URL Input: Only shown if custom is selected */}
+                      {selectedProvider === 'custom' && (
+                        <div className="mb-2 animate-in fade-in slide-in-from-top-1">
+                          <label className="text-cyan-400 block mb-1">自定义 URL (Base URL)</label>
+                          <input type="text" placeholder="https://api.example.com/v1" value={apiBaseUrl} onChange={(e) => saveAISettings(apiKey, e.target.value, apiModel, selectedProvider, customPersona)} className="w-full bg-black/50 border border-cyan-500/50 rounded-lg p-3 text-white outline-none focus:border-cyan-500 font-mono"/>
+                        </div>
+                      )}
+                      
+                      <div className="mb-2">
+                        <label className="text-gray-500 block mb-1">API Key</label>
+                        <input type="password" placeholder="sk-..." value={apiKey} onChange={(e) => saveAISettings(e.target.value, apiBaseUrl, apiModel, selectedProvider, customPersona)} className="w-full bg-black/50 border border-gray-600 rounded-lg p-3 text-white outline-none focus:border-cyan-500 font-mono"/>
+                      </div>
+                      <div className="mb-2 relative">
+                        <div className="flex justify-between items-center mb-1">
+                          <label className="text-gray-500">模型名称</label>
+                          <button onClick={fetchAvailableModels} disabled={isFetchingModels} className="text-[10px] bg-cyan-900/30 text-cyan-300 border border-cyan-800/50 px-2 py-1 rounded flex items-center gap-1 hover:bg-cyan-800/50 transition-colors">{isFetchingModels ? <RefreshCw className="w-3 h-3 animate-spin"/> : <List className="w-3 h-3"/>} 获取列表</button>
+                        </div>
+                        <div className="flex items-center bg-black/50 border border-gray-600 rounded-lg px-3 relative z-50">
+                          <Cpu className="w-4 h-4 text-gray-500 mr-2 flex-shrink-0" />
+                          <input type="text" value={apiModel} onChange={(e) => { setApiModel(e.target.value); setIsModelListOpen(true); setModelSearch(e.target.value); }} onFocus={() => setIsModelListOpen(true)} className="w-full bg-transparent py-3 text-white outline-none font-mono" placeholder="输入或选择模型"/>
+                          <button onClick={() => setIsModelListOpen(!isModelListOpen)}><ChevronDown className="w-4 h-4 text-gray-500" /></button>
+                        </div>
+                        
+                        {isModelListOpen && availableModels.length > 0 && (
+                          <div className="absolute top-full left-0 w-full bg-[#1a1a20] border border-gray-700 rounded-b-lg shadow-xl max-h-40 overflow-y-auto z-[100] mt-1 font-mono">
+                            <div className="sticky top-0 bg-[#1a1a20] p-2 border-b border-gray-700 flex items-center gap-2">
+                              <Search className="w-3 h-3 text-gray-500" />
+                              <input type="text" value={modelSearch} onChange={(e) => setModelSearch(e.target.value)} placeholder="搜索..." className="w-full bg-transparent text-white outline-none text-xs"/>
+                            </div>
+                            {availableModels.filter(m => m.toLowerCase().includes(modelSearch.toLowerCase())).map(m => (
+                              <div key={m} onClick={() => { setApiModel(m); saveAISettings(apiKey, apiBaseUrl, m, selectedProvider, customPersona); setIsModelListOpen(false); }} className="px-3 py-2 hover:bg-cyan-900/30 cursor-pointer truncate text-gray-300 hover:text-cyan-400 transition-colors text-xs">{m}</div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+{/* --- 新增：个性化铃声设置 --- */}
+                  <div className="bg-amber-900/20 p-4 rounded-xl border border-amber-500/30">
+                    <h3 className="text-amber-400 font-bold mb-3 flex items-center gap-2 text-sm"><Bell className="w-4 h-4"/> 专注结束铃声</h3>
+                    <div className="flex items-center justify-between bg-black/30 p-3 rounded-lg border border-amber-500/20">
+                      <div className="text-xs text-gray-300 truncate max-w-[150px]">
+                        {customAlarmSound ? "🎵 当前：自定义铃声" : "🔔 当前：默认 (Ding)"}
                       </div>
-                    )}
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={() => audioInputRef.current?.click()}
+                          className="text-xs bg-amber-600/20 hover:bg-amber-600/40 text-amber-400 border border-amber-600/50 px-3 py-1.5 rounded transition"
+                        >
+                          上传
+                        </button>
+                        {customAlarmSound && (
+                          <button 
+                            onClick={resetAlarmSound}
+                            className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-400 border border-gray-600 px-3 py-1.5 rounded transition"
+                          >
+                            重置
+                          </button>
+                        )}
+                      </div>
+                      <input type="file" ref={audioInputRef} onChange={handleAlarmUpload} accept="audio/*" className="hidden" />
+                    </div>
+                    <p className="text-[10px] text-gray-500 mt-2">* 建议上传 5秒以内 的 MP3/WAV 音效，文件过大会影响性能。</p>
                   </div>
-                </div>
-              </div>
+                 
+                  <div className="bg-red-900/20 p-4 rounded-xl border border-red-700/30">
+                     <h3 className="text-red-400 font-bold mb-3 flex items-center gap-2 text-sm"><AlertTriangle className="w-4 h-4"/> 数据备份与恢复 (DATA BACKUP)</h3>
+                     <div className="flex gap-2">
+                       <button onClick={handleExportData} className="flex-1 bg-gray-800 hover:bg-gray-700 p-3 rounded-lg flex justify-center gap-2 transition-colors text-gray-400 hover:text-white text-sm"><Download className="w-4 h-4"/> 导出备份</button>
+                       <button onClick={() => fileInputRef.current?.click()} className="flex-1 bg-gray-800 hover:bg-gray-700 p-3 rounded-lg flex justify-center gap-2 transition-colors text-gray-400 hover:text-white text-sm"><Upload className="w-4 h-4"/> 导入覆盖</button>
+                       <input type="file" ref={fileInputRef} onChange={handleImportData} className="hidden" accept=".json" />
+                     </div>
 
-              {/* 个性化铃声设置 */}
-              <div className="bg-amber-900/20 p-4 rounded-xl border border-amber-500/30">
-                <h3 className="text-amber-400 font-bold mb-3 flex items-center gap-2 text-sm"><Bell className="w-4 h-4"/> 专注结束铃声</h3>
-                <div className="flex items-center justify-between bg-black/30 p-3 rounded-lg border border-amber-500/20">
-                  <div className="text-xs text-gray-300 truncate max-w-[150px]">
-                    {customAlarmSound ? "🎵 当前：自定义铃声" : "🔔 当前：默认 (Ding)"}
-                  </div>
-                  <div className="flex gap-2">
                     <button 
-                      onClick={() => audioInputRef.current?.click()}
-                      className="text-xs bg-amber-600/20 hover:bg-amber-600/40 text-amber-400 border border-amber-600/50 px-3 py-1.5 rounded transition"
-                    >
-                      上传
-                    </button>
-                    {customAlarmSound && (
-                      <button 
-                        onClick={resetAlarmSound}
-                        className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-400 border border-gray-600 px-3 py-1.5 rounded transition"
-                      >
-                        重置
-                      </button>
-                    )}
-                  </div>
-                  <input type="file" ref={audioInputRef} onChange={handleAlarmUpload} accept="audio/*" className="hidden" />
-                </div>
-                <p className="text-[10px] text-gray-500 mt-2">* 建议上传 5秒以内 的 MP3/WAV 音效，文件过大会影响性能。</p>
-              </div>
+                       onClick={handleClearHistory} 
+                       className="w-full border border-red-800/50 text-red-500 hover:bg-red-900/20 p-2 rounded-lg text-xs flex items-center justify-center gap-2 transition-colors mt-3"
+                     >
+                       <Trash2 className="w-3 h-3" /> 清空所有历史记录 (Reset History)
+                     </button>
+                    
+                     <p className="text-[10px] text-gray-500 mt-2">导出包含：历史记录、学习进度、个性化设置（不含API Key）</p>
+                  </div>
+               </div>
+
               
-              <div className="bg-red-900/20 p-4 rounded-xl border border-red-700/30">
-                  <h3 className="text-red-400 font-bold mb-3 flex items-center gap-2 text-sm"><AlertTriangle className="w-4 h-4"/> 数据备份与恢复 (DATA BACKUP)</h3>
-                  <div className="flex gap-2">
-                    <button onClick={handleExportData} className="flex-1 bg-gray-800 hover:bg-gray-700 p-3 rounded-lg flex justify-center gap-2 transition-colors text-gray-400 hover:text-white text-sm"><Download className="w-4 h-4"/> 导出备份</button>
-                    <button onClick={() => fileInputRef.current?.click()} className="flex-1 bg-gray-800 hover:bg-gray-700 p-3 rounded-lg flex justify-center gap-2 transition-colors text-gray-400 hover:text-white text-sm"><Upload className="w-4 h-4"/> 导入覆盖</button>
-                    <input type="file" ref={fileInputRef} onChange={handleImportData} className="hidden" accept=".json" />
-                  </div>
-
-                <button 
-                    onClick={handleClearHistory} 
-                    className="w-full border border-red-800/50 text-red-500 hover:bg-red-900/20 p-2 rounded-lg text-xs flex items-center justify-center gap-2 transition-colors mt-3"
-                  >
-                    <Trash2 className="w-3 h-3" /> 清空所有历史记录 (Reset History)
-                  </button>
-                  
-                  <p className="text-[10px] text-gray-500 mt-2">导出包含：历史记录、学习进度、个性化设置（不含API Key）</p>
-              </div>
-            </div>
-
-            <div className="mt-4 pt-4 border-t border-gray-800 safe-area-bottom">
-                <button onClick={() => setShowSettings(false)} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition-colors">关闭设置</button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+              
+              <div className="mt-4 pt-4 border-t border-gray-800 safe-area-bottom">
+                 <button onClick={() => setShowSettings(false)} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition-colors">关闭设置</button>
+              </div>
+            </div>
+          </div>
+      )}
+    </div>
+  );
 }
