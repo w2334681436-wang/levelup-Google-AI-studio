@@ -2914,24 +2914,25 @@ ${todayLogDetails}`;
         </div>
       </div>
 
-      <MobileNav 
-        mode={mode}
-        switchMode={switchMode}
-        startAICoach={startAICoach}
-        showSettings={showSettings}
-        setShowSettings={setShowSettings}
-        todayStats={todayStats}
-        activeView={activeView}
-        setActiveView={setActiveView}
-        openManualLog={openManualLog}
-        unreadAIMessages={unreadAIMessages}
-        showHistory={showHistory}
-        setShowHistory={setShowHistory}
-      />
+     <MobileNav 
+        mode={mode}
+        switchMode={switchMode}
+        startAICoach={startAICoach}
+        showSettings={showSettings}
+        setShowSettings={setShowSettings}
+        todayStats={todayStats}
+        activeView={activeView}
+        setActiveView={setActiveView}
+        openManualLog={openManualLog}
+        unreadAIMessages={unreadAIMessages}
+        showHistory={showHistory}
+        setShowHistory={setShowHistory}
+      />
 
-<div className={`flex-1 flex flex-col items-center justify-center p-4 relative transition-all duration-1000 overflow-hidden pb-20 md:pb-4 min-h-[500px] md:min-h-0 overflow-y-auto md:overflow-y-hidden`}>
-  
-  {mode === 'overtime' && (
+      {/* 主内容区域 */}
+      <div className="flex-1 flex flex-col items-center justify-center p-4 relative transition-all duration-1000 overflow-hidden pb-20 md:pb-4 min-h-[500px] md:min-h-0 overflow-y-auto md:overflow-y-hidden">
+        
+        {mode === 'overtime' && (
        <div className="absolute inset-0 z-0 pointer-events-none">
            <GoldParticles />
            {/* 加一层径向光晕，让粒子更明显，同时避免背景死黑 */}
