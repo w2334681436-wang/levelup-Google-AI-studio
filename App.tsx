@@ -2914,7 +2914,7 @@ ${todayLogDetails}`;
         </div>
       </div>
 
-     <MobileNav 
+    <MobileNav 
         mode={mode}
         switchMode={switchMode}
         startAICoach={startAICoach}
@@ -2929,7 +2929,6 @@ ${todayLogDetails}`;
         setShowHistory={setShowHistory}
       />
 
-      {/* 主内容区域 */}
       <div className="flex-1 flex flex-col items-center justify-center p-4 relative transition-all duration-1000 overflow-hidden pb-20 md:pb-4 min-h-[500px] md:min-h-0 overflow-y-auto md:overflow-y-hidden">
         
         {mode === 'overtime' && (
