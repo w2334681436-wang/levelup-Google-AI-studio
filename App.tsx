@@ -3854,5 +3854,6 @@ ${todayLogDetails}`;
           </div>
       )}
     </div>
+      </div>
   );
 }
