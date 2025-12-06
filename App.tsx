@@ -2786,16 +2786,7 @@ ${todayLogDetails}`;
            </div>
         </div>
       )}
-           
-           {/* HUD 装饰文字 */}
-           <div className="absolute top-8 left-1/2 -translate-x-1/2 text-[10px] font-mono text-white/40 tracking-[0.8em] uppercase">System Active</div>
-           <div className="absolute bottom-8 left-1/2 -translate-x-1/2 text-[10px] font-mono text-white/30 tracking-[0.8em] uppercase flex items-center gap-4">
-              <span className="inline-block w-2 h-2 rounded-full bg-current animate-pulse"></span>
-              {mode} protocol
-              <span className="inline-block w-2 h-2 rounded-full bg-current animate-pulse"></span>
-           </div>
-        </div>
-      )}
+          
 
 {/* --- 左侧边栏 (动画优化：duration-500 + ease-out 更轻快) --- */}
       <div className={`hidden md:flex flex-col bg-[#111116]/80 backdrop-blur-md gap-4 z-20 h-full relative group scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${isZen ? 'w-0 min-w-0 p-0 opacity-0 border-none pointer-events-none overflow-hidden' : 'w-96 p-6 border-r border-gray-800 opacity-100 overflow-y-auto'}`}>
