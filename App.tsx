@@ -6,7 +6,7 @@ import { 
   BrainCircuit, Server, Cpu, RefreshCw, List, Send, Smile, Search, 
   ChevronDown, Zap, MessageCircle, User, Info, Bell, PlusCircle, Clock,
   Home,
-  BarChart3,
+  BarChart3,f
   TrendingUp,
   Edit,
   Image,
@@ -2671,6 +2671,15 @@ ${todayLogDetails}`;
      if (mode === 'overtime') return 'from-amber-950/90 to-black'; // 金色背景
   };
 
+  // --- 新增：获取当前模式的主题色 (用于背景光晕) ---
+  const getModeColor = () => {
+     if (mode === 'focus') return 'rgba(16, 185, 129'; // Emerald
+     if (mode === 'break') return 'rgba(59, 130, 246'; // Blue
+     if (mode === 'gaming') return 'rgba(168, 85, 247'; // Purple
+     if (mode === 'overtime') return 'rgba(245, 158, 11'; // Amber
+     return 'rgba(16, 185, 129';
+  };
+
   if (loading) return <div className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center font-mono animate-pulse">正在载入系统...</div>;
 
  return (
@@ -2688,6 +2697,31 @@ ${todayLogDetails}`;
           background-size: 300% 300%;
           animation: cyber-flow 3s ease infinite;
         }
+        .tactical-grid {
+  background-size: 40px 40px;
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  mask-image: radial-gradient(circle at center, black 40%, transparent 100%);
+  -webkit-mask-image: radial-gradient(circle at center, black 40%, transparent 100%);
+}
+
+/* --- 新增：禅模式 HUD 扫描线 --- */
+.hud-scanline {
+  background: linear-gradient(to bottom, transparent 50%, rgba(0, 0, 0, 0.2) 51%);
+  background-size: 100% 4px;
+  animation: scanline-move 0.5s linear infinite;
+  pointer-events: none;
+}
+
+/* --- 新增：呼吸光晕动画 --- */
+@keyframes breathe-glow {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.1); }
+}
+.animate-breathe {
+  animation: breathe-glow 4s ease-in-out infinite;
+}
       `}</style>
       
       <Toast notifications={notifications} removeNotification={removeNotification} />
@@ -2720,9 +2754,25 @@ ${todayLogDetails}`;
         onClose={() => setShowHistory(false)}
       />
 
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(20,20,40,0.4),transparent_70%)] pointer-events-none"></div>
-      <div className="absolute inset-0 opacity-5 pointer-events-none mix-blend-overlay" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")` }}></div>
+   {/* --- 3. 新视觉：动态战术背景 (Grid + Glow) --- */}
+      <div className="absolute inset-0 bg-[#050505] pointer-events-none z-0">
+         {/* 1. 中心动态光晕 (跟随模式变色) */}
+         <div 
+           className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80vw] h-[80vw] md:w-[40vw] md:h-[40vw] rounded-full blur-[100px] transition-colors duration-1000 animate-breathe"
+           style={{ background: `radial-gradient(circle, ${getModeColor()}, 0.3) 0%, transparent 70%)` }}
+         ></div>
+         
+         {/* 2. 全屏战术网格 */}
+         <div className="absolute inset-0 tactical-grid opacity-50"></div>
 
+         {/* 3. 禅模式专属：暗角增强 + 扫描线 */}
+         {isZen && (
+            <>
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,#000_90%)] duration-1000"></div>
+              <div className="absolute inset-0 hud-scanline opacity-10"></div>
+            </>
+         )}
+      </div>
             
       {/* --- 左侧边栏 (动画优化：duration-500 + ease-out 更轻快) --- */}
       <div className={`hidden md:flex flex-col bg-[#111116] gap-4 z-20 h-full relative group scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${isZen ? 'w-0 min-w-0 p-0 opacity-0 border-none pointer-events-none overflow-hidden' : 'w-96 p-6 border-r border-gray-800 opacity-100 overflow-y-auto'}`}>
@@ -3036,39 +3086,71 @@ ${todayLogDetails}`;
               </>
             )}
             
-            {/* --- 核心计时器圆环 (修复点：确保 rounded-full 生效) --- */}
+         {/* --- 核心计时器容器 (含 Zen Mode HUD 边框) --- */}
+        <div className={`relative mb-8 md:mb-12 group transition-all duration-700 ease-in-out ${isZen ? 'scale-110 md:scale-[1.5]' : 'scale-90 md:scale-100 landscape:scale-75 landscape:mb-4'}`}>
+            
+            {/* >>> 新增：禅模式 HUD 战术边框 (1:1 还原悬浮窗) <<< */}
+            {isZen && (
+              <div className="absolute -inset-12 pointer-events-none animate-in fade-in zoom-in duration-700">
+                  {/* 左上角 */}
+                  <div className={`absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 rounded-tl-lg transition-colors duration-500 ${getThemeColor().split(' ')[0].replace('text', 'border')}`} style={{ filter: 'drop-shadow(0 0 5px currentColor)' }}></div>
+                  {/* 右上角 */}
+                  <div className={`absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 rounded-tr-lg transition-colors duration-500 ${getThemeColor().split(' ')[0].replace('text', 'border')}`} style={{ filter: 'drop-shadow(0 0 5px currentColor)' }}></div>
+                  {/* 左下角 */}
+                  <div className={`absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 rounded-bl-lg transition-colors duration-500 ${getThemeColor().split(' ')[0].replace('text', 'border')}`} style={{ filter: 'drop-shadow(0 0 5px currentColor)' }}></div>
+                  {/* 右下角 */}
+                  <div className={`absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 rounded-br-lg transition-colors duration-500 ${getThemeColor().split(' ')[0].replace('text', 'border')}`} style={{ filter: 'drop-shadow(0 0 5px currentColor)' }}></div>
+                  
+                  {/* 顶部标签 */}
+                  <div className={`absolute -top-8 left-1/2 -translate-x-1/2 text-[10px] font-mono tracking-[0.3em] font-bold opacity-70 ${getThemeColor().split(' ')[0]}`}>
+                     // {mode === 'focus' ? 'DEEP WORK' : 'SYSTEM IDLE'} //
+                  </div>
+
+                  {/* 底部能量条装饰 */}
+                  <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 w-32 h-1 bg-gray-800 rounded-full overflow-hidden">
+                     <div className={`h-full ${getThemeColor().split(' ')[0].replace('text', 'bg')} transition-all duration-1000`} style={{ width: `${progress}%` }}></div>
+                  </div>
+              </div>
+            )}
+
+            {!isZen && (
+              <>
+                {/* 非禅模式下的原有装饰圈 */}
+                <div className="absolute inset-0 rounded-full border-4 border-gray-800/50 scale-110"></div>
+                <div className={`absolute inset-0 rounded-full border-4 opacity-20 blur-md transition-all duration-500 ${(getThemeColor() || '').split(' ')[0].replace('text', 'border')}`}></div>
+              </>
+            )}
+            
+            {/* ... 这里保留原来的计时器圆环 div 代码 ... */}
             <div className={`
                rounded-full flex items-center justify-center relative transition-all duration-500 overflow-hidden
-               ${isZen ? 'w-56 h-56 border-0' : `w-64 h-64 md:w-80 md:h-80 border-8 bg-gray-900 shadow-[0_0_60px_-15px_rgba(0,0,0,0.6)] ${getThemeColor()}`}
+               ${isZen ? 'w-64 h-64 md:w-80 md:h-80 border-0 bg-transparent' : `w-64 h-64 md:w-80 md:h-80 border-8 bg-gray-900 shadow-[0_0_60px_-15px_rgba(0,0,0,0.6)] ${getThemeColor()}`}
             `}>
+               {/* 注意：Zen模式下去掉圆环背景色，改为透明，以突显 HUD */}
                
+               {/* 内部 SVG 和 文字保持不变，直接用原来的代码即可 */}
                <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none" viewBox="0 0 100 100">
                  {!isZen && <circle cx="50" cy="50" r="44" fill="none" stroke="#1f2937" strokeWidth="4" />}
                  <circle 
                    cx="50" cy="50" r="44" fill="none" 
                    stroke="currentColor" 
-                   strokeWidth={isZen ? "2" : "4"} 
+                   strokeWidth={isZen ? "1.5" : "4"} 
                    strokeLinecap="round"
                    strokeDasharray="276"
                    strokeDashoffset={276 - (276 * progress) / 100}
-                   className={`transition-all duration-1000 ease-linear ${isZen ? 'text-white/20' : ''}`}
+                   className={`transition-all duration-1000 ease-linear ${isZen ? 'text-white/40' : ''}`}
                  />
                </svg>
 
                <div className="flex flex-col items-center z-10 select-none">
-              {/* --- 修改时间显示：支持加时金色 --- */}
-                 <div className={`font-mono font-bold tracking-tighter tabular-nums text-white drop-shadow-2xl transition-all duration-500 ${isZen ? 'text-6xl' : 'text-5xl md:text-7xl'} ${mode === 'overtime' ? 'text-amber-400 drop-shadow-[0_0_15px_rgba(251,191,36,0.8)]' : ''}`}>
+                 <div className={`font-mono font-bold tracking-tighter tabular-nums text-white drop-shadow-2xl transition-all duration-500 ${isZen ? 'text-7xl md:text-8xl' : 'text-5xl md:text-7xl'} ${mode === 'overtime' ? 'text-amber-400 drop-shadow-[0_0_15px_rgba(251,191,36,0.8)]' : ''}`}>
                    {mode === 'overtime' ? `+${formatTime(timeLeft)}` : formatTime(timeLeft)}
                  </div>
                  
-                 {/* --- 修改文字标签 --- */}
-                 <div className={`text-sm mt-4 font-bold tracking-widest uppercase transition-all duration-500 ${mode === 'focus' ? 'text-emerald-400' : mode === 'break' ? 'text-blue-400' : mode === 'gaming' ? 'text-purple-400' : 'text-amber-400'} ${isZen ? 'opacity-50' : 'opacity-100'}`}>
-                   {mode === 'focus' ? 'DEEP WORK' : mode === 'break' ? 'RECHARGE' : mode === 'gaming' ? 'GAME ON' : 'GOLDEN TIME'}
-                 </div>
-                 
-                 {!isZen && mode === 'focus' && isActive && (
-                    <div className="text-[10px] text-gray-500 mt-2 bg-gray-800 px-2 py-1 rounded-full animate-pulse border border-gray-700">
-                      预计收益: +{Math.floor(initialTime / 60 / 10)}m 券
+                 {/* 禅模式下隐藏这个小标签，因为已经移到 HUD 顶部了 */}
+                 {!isZen && (
+                    <div className={`text-sm mt-4 font-bold tracking-widest uppercase transition-all duration-500 ${mode === 'focus' ? 'text-emerald-400' : mode === 'break' ? 'text-blue-400' : mode === 'gaming' ? 'text-purple-400' : 'text-amber-400'}`}>
+                    {mode === 'focus' ? 'DEEP WORK' : mode === 'break' ? 'RECHARGE' : mode === 'gaming' ? 'GAME ON' : 'GOLDEN TIME'}
                     </div>
                  )}
                </div>
