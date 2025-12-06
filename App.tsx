@@ -2674,6 +2674,7 @@ ${todayLogDetails}`;
   if (loading) return <div className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center font-mono animate-pulse">正在载入系统...</div>;
 
  return (
+    <div ref={appContainerRef} className={`h-[100dvh] w-full bg-[#0a0a0a] text-gray-100 font-sans flex flex-col md:flex-row overflow-hidden relative selection:bg-cyan-500/30`}>
       
       {/* 1. CSS 动画样式保持不变 */}
       <style>{`
@@ -3025,32 +3026,20 @@ ${todayLogDetails}`;
             </button>
           </div>
 
-       <div className={`relative mb-8 md:mb-12 group transition-all duration-700 ease-in-out ${isZen ? 'scale-125 md:scale-[2.5]' : 'scale-90 md:scale-100 landscape:scale-75 landscape:mb-4'}`}>
-            
-            {/* --- 新增：呼吸泛光光效 (Backdrop Glow) --- */}
-            <div className={`
-              absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full -z-10 
-              transition-all duration-1000 ease-in-out animate-[pulse_4s_ease-in-out_infinite] mix-blend-screen pointer-events-none
-              ${mode === 'focus' ? 'bg-emerald-600/30' : mode === 'break' ? 'bg-blue-600/30' : mode === 'gaming' ? 'bg-purple-600/30' : 'bg-amber-600/40'}
-              ${isZen 
-                ? 'w-[120%] h-[120%] blur-[40px] opacity-40'  /* 禅模式：范围收敛，防止全屏过曝 */
-                : 'w-[220%] h-[220%] blur-[80px] md:blur-[100px] opacity-50' /* 主页模式：大范围氛围光，覆盖半屏 */
-              }
-            `}></div>
-
+        <div className={`relative mb-8 md:mb-12 group transition-all duration-700 ease-in-out ${isZen ? 'scale-125 md:scale-[2.5]' : 'scale-90 md:scale-100 landscape:scale-75 landscape:mb-4'}`}>
             {!isZen && (
               <>
                 {/* 外层装饰圈 1 */}
                 <div className="absolute inset-0 rounded-full border-4 border-gray-800/50 scale-110"></div>
-                {/* 外层装饰圈 2 (发光模糊 - 仅保留作为边缘高光) */}
-                <div className={`absolute inset-0 rounded-full border-4 opacity-40 blur-md transition-all duration-500 ${(getThemeColor() || '').split(' ')[0].replace('text', 'border')}`}></div>
+                {/* 外层装饰圈 2 (发光模糊) */}
+                <div className={`absolute inset-0 rounded-full border-4 opacity-20 blur-md transition-all duration-500 ${(getThemeColor() || '').split(' ')[0].replace('text', 'border')}`}></div>
               </>
             )}
             
-            {/* --- 核心计时器圆环 --- */}
+            {/* --- 核心计时器圆环 (修复点：确保 rounded-full 生效) --- */}
             <div className={`
-               rounded-full flex items-center justify-center relative transition-all duration-500 overflow-hidden z-10
-               ${isZen ? 'w-56 h-56 border-0' : `w-64 h-64 md:w-80 md:h-80 border-8 bg-gray-900 shadow-[0_0_60px_-15px_rgba(0,0,0,0.8)] ${getThemeColor()}`}
+               rounded-full flex items-center justify-center relative transition-all duration-500 overflow-hidden
+               ${isZen ? 'w-56 h-56 border-0' : `w-64 h-64 md:w-80 md:h-80 border-8 bg-gray-900 shadow-[0_0_60px_-15px_rgba(0,0,0,0.6)] ${getThemeColor()}`}
             `}>
                
                <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none" viewBox="0 0 100 100">
