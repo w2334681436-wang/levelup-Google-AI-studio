@@ -1506,28 +1506,41 @@ if (storedTimerState.isActive && storedTimerState.timestamp) {
     }
   };
 
-// --- 还原：最简单的悬浮窗开关 (只在用户点击时触发) ---
+// --- 还原：最简单的悬浮窗开关 (修复第一次点击失败 Bug) ---
   const togglePiP = async () => {
     try {
       if (document.pictureInPictureElement) {
         await document.exitPictureInPicture();
         setIsPipActive(false);
       } else if (videoRef.current && canvasRef.current) {
-        // 强制刷新一帧画面确保有内容
+        // 1. 强制刷新一帧画面，这会触发 updatePiP 里的 srcObject 初始化
         updatePiP(timeLeft, mode);
         
-        // 确保视频流在播放
-        if (videoRef.current.paused) {
-           await videoRef.current.play().catch(() => {});
+        const video = videoRef.current;
+
+        // 2. 关键修复：如果视频刚初始化(readyState=0)，必须等待元数据加载完成
+        // 否则直接调用 requestPictureInPicture 会报错 "Metadata not loaded"
+        if (video.readyState === 0) {
+            await new Promise((resolve) => {
+                video.onloadedmetadata = () => resolve(true);
+                // 兜底：如果500ms还没好，也强行继续，防止死等
+                setTimeout(() => resolve(true), 500);
+            });
         }
 
-        await videoRef.current.requestPictureInPicture();
+        // 3. 确保视频流在播放
+        if (video.paused) {
+           await video.play().catch(() => {});
+        }
+
+        // 4. 一切就绪，请求画中画
+        await video.requestPictureInPicture();
         setIsPipActive(true);
       }
     } catch (err) {
       console.error("PiP Error:", err);
-      // 只有手动点击失败时才提示一下，平时绝不打扰
-      addNotification("开启悬浮窗失败，请确保先点击开始计时", "error");
+      // 只有手动点击失败时才提示一下
+      addNotification("开启悬浮窗失败，请确保先点击开始计时，或重试一次", "error");
     }
   };
 
