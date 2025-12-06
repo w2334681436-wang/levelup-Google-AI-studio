@@ -1359,7 +1359,7 @@ if (storedTimerState.isActive && storedTimerState.timestamp) {
     localStorage.setItem('ai_unread_messages', count.toString());
   };
 
-// --- 2. 增强版：绘制悬浮窗内容 (修复专注模式绿光氛围) ---
+// --- 2. 增强版：绘制悬浮窗内容 (修复点点点方向 + 绿色氛围) ---
   const updatePiP = (seconds, currentMode) => {
     const canvas = canvasRef.current;
     const video = videoRef.current;
@@ -1372,22 +1372,22 @@ if (storedTimerState.isActive && storedTimerState.timestamp) {
     const total = initialTime > 0 ? initialTime : 1;
     const progress = Math.max(0, Math.min(1, (total - seconds) / total));
 
-    // --- 1. 配色系统 (核心修改：调整专注模式默认背景) ---
+    // --- 1. 配色系统 ---
     let theme = {
-        primary: '#34d399', // 亮青绿文字
-        glow: '#059669',    // 边框发光
-        // ✅ 修复：将原来的深蓝灰(#0f172a) 改为 深祖母绿(#064e3b)
-        // 这样中心就会有明显的绿色泛光，而不是藏青色
-        bgGradientStart: '#064e3b', 
+        primary: '#34d399', // 亮青绿
+        glow: '#059669',
+        bgGradientStart: '#064e3b', // 深祖母绿 (专注模式核心氛围)
         bgGradientEnd: '#000000',   
         textShadow: 15
     };
 
     let statusText = "DEEP WORK PROTOCOL";
     
-    // 动态点点点
-    const dotCount = Math.abs(seconds) % 4;
+    // >>>>> 核心修复：使用 Date.now() 确保动画永远正向 (0->1->2->3) <<<<<
+    // 之前用 seconds 在倒计时会变成 (3->2->1->0)，现在改为系统时间，永远向前
+    const dotCount = Math.floor(Date.now() / 1000) % 4;
     const dots = ".".repeat(dotCount).padEnd(3, ' '); 
+    
     let headerText = `⚡ 对局进行中${dots}`;
 
     // 根据模式切换皮肤
@@ -1409,11 +1409,10 @@ if (storedTimerState.isActive && storedTimerState.timestamp) {
         headerText = `🎮 娱乐放松中${dots}`;
     }
 
-    // --- 2. 绘制背景 (径向渐变制造氛围感) ---
-    // 渐变半径稍微调大一点 (50 -> 150)，让泛光更柔和、范围更大
+    // --- 2. 绘制背景 ---
     const gradient = ctx.createRadialGradient(width / 2, height / 2, 0, width / 2, height / 2, width * 0.8);
-    gradient.addColorStop(0, theme.bgGradientStart); // 中心泛光色
-    gradient.addColorStop(1, theme.bgGradientEnd);   // 边缘深黑色
+    gradient.addColorStop(0, theme.bgGradientStart);
+    gradient.addColorStop(1, theme.bgGradientEnd);
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, width, height);
 
