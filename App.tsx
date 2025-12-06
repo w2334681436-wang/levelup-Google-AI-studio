@@ -315,8 +315,10 @@ const MobaRankCard = ({ totalStars, todayMinutes, peakScore, season, heroPowers 
   const getBadgeName = (s) => (BADGE_THRESHOLDS.find(b => s >= b.score) || BADGE_THRESHOLDS[5]).name;
   maxBadge = getBadgeName(maxPower);
 
-  return (
-    <div className="bg-gradient-to-br from-[#0f1119] via-[#1a1c2e] to-black p-4 rounded-xl border border-blue-900/50 shadow-2xl relative overflow-hidden group mb-4">
+return (
+    <div className="backdrop-blur-md bg-white/5 p-4 rounded-2xl border border-white/10 shadow-xl relative overflow-hidden group mb-4 transition-all hover:bg-white/10">
+      {/* 鼠标悬停时的扫光特效 */}
+      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out pointer-events-none"></div>      
       {/* 赛季标识 */}
       <div className="flex justify-between items-start mb-2 relative z-10">
          <div className="bg-black/60 border border-gray-700 px-2 py-0.5 rounded text-[10px] text-gray-400 font-bold uppercase tracking-wider">
@@ -2720,12 +2722,24 @@ ${todayLogDetails}`;
         onClose={() => setShowHistory(false)}
       />
 
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(20,20,40,0.4),transparent_70%)] pointer-events-none"></div>
-      <div className="absolute inset-0 opacity-5 pointer-events-none mix-blend-overlay" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")` }}></div>
-
+    {/* --- 新背景开始 --- */}
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        {/* 1. 基础深色底 */}
+        <div className="absolute inset-0 bg-[#050505]"></div>
+        {/* 2. 赛博网格 (用 CSS background-image 实现) */}
+        <div className="absolute inset-0 opacity-20" 
+             style={{ 
+               backgroundImage: 'linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px)', 
+               backgroundSize: '40px 40px' 
+             }}>
+        </div>
+        {/* 3. 顶部聚光灯效果 (让视觉聚焦在屏幕中央) */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(6,182,212,0.15),transparent_70%)]"></div>
+      </div>
+      {/* --- 新背景结束 --- */}
             
       {/* --- 左侧边栏 (动画优化：duration-500 + ease-out 更轻快) --- */}
-      <div className={`hidden md:flex flex-col bg-[#111116] gap-4 z-20 h-full relative group scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${isZen ? 'w-0 min-w-0 p-0 opacity-0 border-none pointer-events-none overflow-hidden' : 'w-96 p-6 border-r border-gray-800 opacity-100 overflow-y-auto'}`}>
+      <div className={`hidden md:flex flex-col backdrop-blur-xl bg-black/30 gap-4 z-20 h-full relative group scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${isZen ? 'w-0 min-w-0 p-0 opacity-0 border-none pointer-events-none overflow-hidden' : 'w-96 p-6 border-r border-white/10 opacity-100 overflow-y-auto'}`}>
         <div className="absolute inset-0 bg-gradient-to-br from-blue-900/10 via-purple-900/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
         
         {/* 内容容器：min-w 保持内容宽度，防止挤压 */}
@@ -3042,18 +3056,33 @@ ${todayLogDetails}`;
                ${isZen ? 'w-56 h-56 border-0' : `w-64 h-64 md:w-80 md:h-80 border-8 bg-gray-900 shadow-[0_0_60px_-15px_rgba(0,0,0,0.6)] ${getThemeColor()}`}
             `}>
                
-               <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none" viewBox="0 0 100 100">
-                 {!isZen && <circle cx="50" cy="50" r="44" fill="none" stroke="#1f2937" strokeWidth="4" />}
+             {/* --- 新版全息圆环 SVG 开始 --- */}
+               <div className={`absolute inset-0 rounded-full blur-[40px] opacity-30 ${getThemeColor().split(' ')[0].replace('text-', 'bg-')}`}></div>
+               
+               {/* 外圈装饰环 (静态) */}
+               <div className="absolute inset-0 rounded-full border border-white/10 scale-110"></div>
+
+               {/* 内部旋转虚线环 (动态) */}
+               <svg className="absolute inset-0 w-full h-full animate-[spin_12s_linear_infinite] opacity-40 pointer-events-none" viewBox="0 0 100 100">
+                  <circle cx="50" cy="50" r="48" fill="none" stroke="currentColor" strokeWidth="1" strokeDasharray="4 6" className="text-white/50" />
+               </svg>
+
+               {/* 核心进度环 */}
+               <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none drop-shadow-[0_0_10px_currentColor]" viewBox="0 0 100 100">
+                 {/* 轨道底色 */}
+                 {!isZen && <circle cx="50" cy="50" r="44" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="4" />}
+                 {/* 进度条 */}
                  <circle 
                    cx="50" cy="50" r="44" fill="none" 
                    stroke="currentColor" 
-                   strokeWidth={isZen ? "2" : "4"} 
+                   strokeWidth={isZen ? "3" : "6"} 
                    strokeLinecap="round"
                    strokeDasharray="276"
                    strokeDashoffset={276 - (276 * progress) / 100}
                    className={`transition-all duration-1000 ease-linear ${isZen ? 'text-white/20' : ''}`}
                  />
                </svg>
+               {/* --- 新版全息圆环 SVG 结束 --- */}
 
                <div className="flex flex-col items-center z-10 select-none">
               {/* --- 修改时间显示：支持加时金色 --- */}
