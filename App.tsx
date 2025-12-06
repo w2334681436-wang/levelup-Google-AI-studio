@@ -3026,17 +3026,18 @@ ${todayLogDetails}`;
             </button>
           </div>
 
- {/* --- 最终完美平滑版容器 --- */}
+      {/* 优化点 1: 添加 will-change-transform 属性
+            这会告诉浏览器将此元素提升到独立的合成层，使用 GPU 进行渲染，
+            彻底解决放大过程中的掉帧和卡顿。
+        */}
         <div className={`
             relative mb-8 md:mb-12 group 
-            /* 关键点1：保持贝塞尔曲线，确保放大的物理运动顺滑 */
-            transition-transform duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)] 
+            transition-all duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)] 
             will-change-transform
-            /* 外部容器负责缩放 */
             ${isZen ? 'scale-125 md:scale-[2.5]' : 'scale-90 md:scale-100 landscape:scale-75 landscape:mb-4'}
         `}>
             
-            {/* 1. 呼吸泛光层 (保持不变) */}
+            {/* --- 呼吸泛光光效 (保持不变) --- */}
             <div className={`
               absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full -z-10 
               transition-all duration-1000 ease-in-out animate-[pulse_4s_ease-in-out_infinite] mix-blend-screen pointer-events-none
@@ -3047,38 +3048,30 @@ ${todayLogDetails}`;
               }
             `}></div>
 
-            {/* 2. 外层装饰圈 (Opacity 过渡) */}
+            {/* 优化点 2: 移除 {!isZen && ...} 判断
+               改为始终渲染，通过 opacity 控制显隐。
+               这样切换模式时，装饰圈会随着放大动画平滑消失，而不是瞬间“闪”没。
+            */}
             <div className={`absolute inset-0 transition-opacity duration-500 ease-in-out ${isZen ? 'opacity-0' : 'opacity-100'}`}>
+                {/* 外层装饰圈 1 */}
                 <div className="absolute inset-0 rounded-full border-4 border-gray-800/50 scale-110"></div>
+                {/* 外层装饰圈 2 (发光模糊) */}
                 <div className={`absolute inset-0 rounded-full border-4 opacity-40 blur-md transition-all duration-500 ${(getThemeColor() || '').split(' ')[0].replace('text', 'border')}`}></div>
             </div>
             
-            {/* 3. 核心计时器圆环 (关键修改区) */}
+            {/* --- 核心计时器圆环 --- */}
             <div className={`
-               /* 关键点2：锁定物理尺寸！无论 Zen 还是 Home，宽高恒定，绝不发生 Layout 重排 */
-               w-64 h-64 md:w-80 md:h-80 border-8 rounded-full 
-               flex items-center justify-center relative overflow-hidden z-10
-               /* 关键点3：使用颜色过渡代替形状突变 */
-               transition-all duration-700 ease-in-out
-               
-               ${isZen 
-                 ? 'bg-transparent border-transparent shadow-none'  /* Zen模式：只是变透明，物理边框还在 */
-                 : `bg-gray-900 shadow-[0_0_60px_-15px_rgba(0,0,0,0.8)] ${getThemeColor()}` /* Home模式：上色 */
-               }
+               rounded-full flex items-center justify-center relative transition-all duration-500 overflow-hidden z-10
+               ${isZen ? 'w-56 h-56 border-0' : `w-64 h-64 md:w-80 md:h-80 border-8 bg-gray-900 shadow-[0_0_60px_-15px_rgba(0,0,0,0.8)] ${getThemeColor()}`}
             `}>
                
-               {/* 进度条 SVG */}
+               {/* 下面的 SVG 和文字内容保持不变... */}
                <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none" viewBox="0 0 100 100">
-                 {/* 背景灰圈 */}
-                 <circle cx="50" cy="50" r="44" fill="none" stroke="#1f2937" strokeWidth="4" className={`transition-opacity duration-500 ${isZen ? 'opacity-0' : 'opacity-100'}`} />
-                 
-                 {/* 进度亮圈 */}
+                 {!isZen && <circle cx="50" cy="50" r="44" fill="none" stroke="#1f2937" strokeWidth="4" />}
                  <circle 
                    cx="50" cy="50" r="44" fill="none" 
                    stroke="currentColor" 
-                   /* 关键点4：不要用三元表达式切换 strokeWidth，这会导致 React 重新创建 DOM */
-                   /* 我们让它保持统一，利用 CSS transition 来平滑视觉 (或者干脆不改，依靠 scale 放大变粗) */
-                   strokeWidth="4" 
+                   strokeWidth={isZen ? "2" : "4"} 
                    strokeLinecap="round"
                    strokeDasharray="276"
                    strokeDashoffset={276 - (276 * progress) / 100}
@@ -3087,8 +3080,7 @@ ${todayLogDetails}`;
                </svg>
 
                <div className="flex flex-col items-center z-10 select-none">
-                 {/* 时间文字：利用 scale 放大，字体本身不需要变大跳变 */}
-                 <div className={`font-mono font-bold tracking-tighter tabular-nums text-white drop-shadow-2xl transition-all duration-500 ${isZen ? 'scale-110' : 'scale-100'} text-5xl md:text-7xl ${mode === 'overtime' ? 'text-amber-400 drop-shadow-[0_0_15px_rgba(251,191,36,0.8)]' : ''}`}>
+                 <div className={`font-mono font-bold tracking-tighter tabular-nums text-white drop-shadow-2xl transition-all duration-500 ${isZen ? 'text-6xl' : 'text-5xl md:text-7xl'} ${mode === 'overtime' ? 'text-amber-400 drop-shadow-[0_0_15px_rgba(251,191,36,0.8)]' : ''}`}>
                    {mode === 'overtime' ? `+${formatTime(timeLeft)}` : formatTime(timeLeft)}
                  </div>
                  
@@ -3096,8 +3088,8 @@ ${todayLogDetails}`;
                    {mode === 'focus' ? 'DEEP WORK' : mode === 'break' ? 'RECHARGE' : mode === 'gaming' ? 'GAME ON' : 'GOLDEN TIME'}
                  </div>
                  
-                 {/* 底部收益提示 */}
-                 <div className={`transition-all duration-500 ease-out overflow-hidden ${!isZen && mode === 'focus' && isActive ? 'opacity-100 max-h-10 scale-100' : 'opacity-0 max-h-0 scale-95'}`}>
+                 {/* 同样优化：使用 opacity 而不是条件渲染，防止文字跳动 */}
+                 <div className={`transition-all duration-300 ${!isZen && mode === 'focus' && isActive ? 'opacity-100 h-auto scale-100' : 'opacity-0 h-0 scale-95 overflow-hidden'}`}>
                     <div className="text-[10px] text-gray-500 mt-2 bg-gray-800 px-2 py-1 rounded-full animate-pulse border border-gray-700">
                       预计收益: +{Math.floor(initialTime / 60 / 10)}m 券
                     </div>
